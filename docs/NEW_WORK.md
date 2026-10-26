@@ -22,3 +22,16 @@ for the Meta Global AI Developer Hackathon. Nothing here predates the event.
   Response shape is output[] of typed items, not choices[0].message.content.
 - Partner credit requests submitted: Baseten, Modal, Fireworks.
 - Repository initialised; identity pinned repo-locally.
+
+### Day 1 close — 26 Oct 2026, 14:00–23:15 IST
+
+- Hours completed: H01–H10 (all ten).
+- Commits: f9670de (init), 44f6580 (health endpoint + leak test).
+- Evidence: `python -m pytest -q` → 2 passed. `GET /healthz` → 200,
+  mode "MOCK" with no key exported.
+- Model spend: one verified call, muse-spark-1.3, ~$0.10 of $150.
+- Blockers recorded, not hidden: Axis standing-instruction decline on the
+  MasterCard required switching to a Visa before the account cleared.
+  Partner credits (Baseten, Modal, Fireworks) requested, all pending review.
+- Next: Day 2, camera capture and text/voice intake. Build the Meta adapter
+  with reasoning.effort set explicitly and store=false. Attend Agents 101.
