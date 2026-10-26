@@ -9,8 +9,10 @@ for the Meta Global AI Developer Hackathon. Nothing here predates the event.
 |---|---|
 | GitHub | vikashsaravanann  (double n) |
 | Vercel scope | vikashsaravanan  (single n) |
-| Meta Model API team | 2639715836462932 |
-| Modal workspace | createwithvikash |
+
+The Meta Model API team ID and the Modal workspace name are recorded in a local
+note outside this repository. They are not credentials, but this file is
+permanently public and publishing them buys nothing.
 
 ## Day 1 — 26 October 2026
 

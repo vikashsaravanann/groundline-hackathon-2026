@@ -20,12 +20,12 @@ def test_healthz_returns_ok():
 
 
 def test_healthz_response_schema_is_exactly_expected():
-    # The public schema is locked to liveness only: status + version. Nothing
-    # that discloses the key's value or whether a key is configured.
+    # Public schema: status, version, mode. mode is the rule-7 MOCK/live
+    # announcement; meta_key_present stays removed (it disclosed key state).
     body = client.get("/healthz").json()
-    assert set(body.keys()) == {"status", "version"}
+    assert set(body.keys()) == {"status", "version", "mode"}
     assert "meta_key_present" not in body
-    assert "mode" not in body
+    assert body["mode"] in ("live", "MOCK")
     assert isinstance(body["version"], str) and body["version"]
 
 
@@ -35,16 +35,19 @@ def test_healthz_never_leaks_credentials():
         assert forbidden not in text
 
 
-def test_response_identical_whether_or_not_key_present(monkeypatch):
-    # Presence or absence of a configured key must not change the public
-    # response at all — otherwise the endpoint would leak key availability.
+def test_mode_is_mock_when_key_absent(monkeypatch):
+    # Rule 7: with no key configured, the mocked path announces itself as MOCK.
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
-    without_key = client.get("/healthz").json()
+    body = client.get("/healthz").json()
+    assert body == {"status": "ok", "version": app.version, "mode": "MOCK"}
 
+
+def test_mode_is_live_when_key_present(monkeypatch):
+    # With a key configured, mode flips to live — the real adapter path. The
+    # key value itself must still never appear in the response.
     monkeypatch.setenv("MODEL_API_KEY", SENTINEL_SECRET)
-    with_key = client.get("/healthz").json()
-
-    assert without_key == with_key == {"status": "ok", "version": app.version}
+    body = client.get("/healthz").json()
+    assert body == {"status": "ok", "version": app.version, "mode": "live"}
 
 
 def test_injected_sentinel_secret_is_never_disclosed(monkeypatch):
