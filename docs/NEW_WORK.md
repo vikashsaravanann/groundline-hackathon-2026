@@ -75,8 +75,14 @@ authorization) · DEFERRED (belongs to a later day).
   Not yet run because it requires a push, which is held for authorization.
 - Publication — PENDING AUTH. 4 local commits reviewed and secret-scanned; not
   pushed. No force-push, no history rewrite.
+- Published — VERIFIED. `git push origin main` fast-forwarded
+  `f78a090 -> 03b1a03`; remote HEAD matches local `03b1a03`. All five Day 1
+  commits are on GitHub. No force-push, no history rewrite.
+- Remote CI — VERIFIED GREEN. Backend CI run 40378168304 (push of `03b1a03`)
+  completed with success; "API tests" job passed in 12s. Non-fatal annotations
+  only (Node 20 action deprecation; ubuntu-latest migration notice).
 - Day 1 verdict: DAY 1 ENGINEERING COMPLETE — EXTERNAL VERIFICATION PENDING
-  (remote CI run after an authorized push; portal/billing confirmations).
+  (portal/billing confirmations; CI now green). Engineering + publication done.
 - Day 2 entry criteria: Next.js frontend foundation, camera permission +
   snapshot capture, typed intake, image size/MIME validation, Muse Spark
   image-analysis adapter (reuse the verified base URL / model id / auth pattern)
