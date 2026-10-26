@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+node_modules/
+.next/
+out/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.pem
+*.key
+*.p12
+.vercel
+.DS_Store
+demo/output/
