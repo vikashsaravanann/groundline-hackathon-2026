@@ -35,3 +35,49 @@ for the Meta Global AI Developer Hackathon. Nothing here predates the event.
   Partner credits (Baseten, Modal, Fireworks) requested, all pending review.
 - Next: Day 2, camera capture and text/voice intake. Build the Meta adapter
   with reasoning.effort set explicitly and store=false. Attend Agents 101.
+
+### Day 1 final closure & verification — 26 Oct 2026, IST
+
+Status legend: VERIFIED (independent in-session evidence) · PARTICIPANT-REPORTED
+(logged by participant, not independently checked) · PENDING AUTH (awaiting
+authorization) · DEFERRED (belongs to a later day).
+
+- Git state — VERIFIED. Local `main` HEAD `aa8b47a`, 4 commits ahead of
+  `origin/main` (`f78a090`), clean working tree. Original hackathon commits
+  intact; no history rewritten.
+- Local-only commits: `318ec0d` acceptance criteria · `441bf24` backend
+  hardening + pinned deps + expanded tests + CI · `3c71f5e` /healthz reduced to
+  `{status, version}` + CI rename + publishable-key docs · `aa8b47a` ignore
+  Supabase CLI local state.
+- Backend tests — VERIFIED. `python -m pytest -q` → 17 passed, 1 warning
+  (third-party Starlette httpx deprecation). `pip check` → no broken
+  requirements. Live uvicorn boot returns `{"status":"ok","version":"0.1.0"}`.
+- `/healthz` — VERIFIED. Public body is `{status, version}` only; no
+  key-presence field, no key value, no Meta call (no charge).
+- Meta Model API — VERIFIED LIVE (authentication + request). One authorized
+  minimal call to `muse-spark-1.3` via `https://api.meta.ai/v1/responses`:
+  HTTP 200, usage recorded (31 tokens), no secret exposed. `store=false`,
+  `reasoning.effort="minimal"`. Generated-text output NOT verified — the 16-token
+  cap left the response text-empty (`status: incomplete`); text-generation
+  quality is DEFERRED. Cost negligible (~$0.00009).
+- Supabase — VERIFIED (linked). Dedicated project `groundline-hackathon-2026`
+  (ref `hstznpxnxxxniukkqosi`), `ACTIVE_HEALTHY`, `linked=True`, created in the
+  event window. Not `csc-circle-production`. No migrations, no DB writes, no DB
+  password handled. CLI local state (`supabase/.temp/`) gitignored.
+- Secret rotation — PARTICIPANT-REPORTED; account-level verification pending.
+  A Supabase service_role key was exposed in chat and the participant reports
+  rotating it. Independent in-session checks: the key is NOT in any tracked file
+  and NOT in git history (full-history scan). The old credential was not
+  reproduced or tested.
+- GitHub Actions CI — CONFIGURATION REVIEWED; remote execution PENDING. Workflow
+  `.github/workflows/backend-ci.yml` is valid, least-privilege
+  (`permissions: contents: read`), uses no secrets, triggers no billable calls.
+  Not yet run because it requires a push, which is held for authorization.
+- Publication — PENDING AUTH. 4 local commits reviewed and secret-scanned; not
+  pushed. No force-push, no history rewrite.
+- Day 1 verdict: DAY 1 ENGINEERING COMPLETE — EXTERNAL VERIFICATION PENDING
+  (remote CI run after an authorized push; portal/billing confirmations).
+- Day 2 entry criteria: Next.js frontend foundation, camera permission +
+  snapshot capture, typed intake, image size/MIME validation, Muse Spark
+  image-analysis adapter (reuse the verified base URL / model id / auth pattern)
+  with a safe fixture fallback, loading/error states, tests, mobile layout.
