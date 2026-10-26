@@ -1,11 +1,13 @@
-name: CI
+name: Backend CI
 
 on:
   push:
   pull_request:
 
 # Least privilege: the test job only needs to read the repository. No write
-# scopes, no production secrets are referenced anywhere in this workflow.
+# scopes, and no production secrets are referenced anywhere in this workflow,
+# so CI cannot make a live (billable) Meta model call — MODEL_API_KEY is never
+# set, which keeps every run on the non-chargeable path.
 permissions:
   contents: read
 

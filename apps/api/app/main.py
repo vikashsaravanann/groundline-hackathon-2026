@@ -39,29 +39,19 @@ app.add_middleware(
 class HealthResponse(BaseModel):
     status: str
     version: str
-    mode: str
 
 
 @app.get("/healthz", response_model=HealthResponse)
 def healthz() -> HealthResponse:
-    """Liveness probe.
+    """Liveness probe for the API service.
 
-    This endpoint makes no network call to Meta or any model provider, so it is
-    never chargeable. ``mode`` reports the service's configured operating mode,
-    not a verified upstream connection: the presence of a configured key is not
-    treated as proof that a live model call would succeed.
+    This reports only that the HTTP service is up. It makes no network call to
+    Meta or any model provider, so it is never chargeable, and a healthy service
+    is deliberately NOT conflated with a healthy Meta model connection.
 
-    - ``mode == "MOCK"`` when no model key is configured; per the project
-      security rules a mocked path must announce itself as MOCK.
-    - ``mode == "live"`` when a model key is configured, meaning the real
-      adapter path is selected. It does not assert that Meta is reachable.
-
-    The configured key itself is never returned, logged, or echoed, and the
-    response carries no field that discloses the key's value or presence.
+    The response discloses nothing about credentials: not the key's value, and
+    not whether a key is configured. Any model-path MOCK/live announcement
+    required by docs/SECURITY.md belongs on the model-serving path, not on this
+    liveness probe, where surfacing it would leak key availability.
     """
-    key_configured = bool(os.environ.get("MODEL_API_KEY"))
-    return HealthResponse(
-        status="ok",
-        version=app.version,
-        mode="live" if key_configured else "MOCK",
-    )
+    return HealthResponse(status="ok", version=app.version)

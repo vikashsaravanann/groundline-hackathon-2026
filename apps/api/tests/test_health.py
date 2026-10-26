@@ -1,3 +1,4 @@
+import importlib
 import socket
 
 import pytest
@@ -15,17 +16,16 @@ SENTINEL_SECRET = "sk-groundline-SENTINEL-DO-NOT-DISCLOSE-0123456789"
 def test_healthz_returns_ok():
     response = client.get("/healthz")
     assert response.status_code == 200
-    body = response.json()
-    assert body["status"] == "ok"
-    assert body["mode"] in ("live", "MOCK")
+    assert response.json()["status"] == "ok"
 
 
 def test_healthz_response_schema_is_exactly_expected():
-    # The schema is locked: status, version, mode — and nothing that discloses
-    # the key's presence or value (no meta_key_present, no key echo).
+    # The public schema is locked to liveness only: status + version. Nothing
+    # that discloses the key's value or whether a key is configured.
     body = client.get("/healthz").json()
-    assert set(body.keys()) == {"status", "version", "mode"}
+    assert set(body.keys()) == {"status", "version"}
     assert "meta_key_present" not in body
+    assert "mode" not in body
     assert isinstance(body["version"], str) and body["version"]
 
 
@@ -35,16 +35,16 @@ def test_healthz_never_leaks_credentials():
         assert forbidden not in text
 
 
-def test_mode_is_mock_when_no_key(monkeypatch):
+def test_response_identical_whether_or_not_key_present(monkeypatch):
+    # Presence or absence of a configured key must not change the public
+    # response at all — otherwise the endpoint would leak key availability.
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
-    body = client.get("/healthz").json()
-    assert body["mode"] == "MOCK"
+    without_key = client.get("/healthz").json()
 
-
-def test_mode_is_live_when_key_present(monkeypatch):
     monkeypatch.setenv("MODEL_API_KEY", SENTINEL_SECRET)
-    body = client.get("/healthz").json()
-    assert body["mode"] == "live"
+    with_key = client.get("/healthz").json()
+
+    assert without_key == with_key == {"status": "ok", "version": app.version}
 
 
 def test_injected_sentinel_secret_is_never_disclosed(monkeypatch):
@@ -117,3 +117,18 @@ def test_cors_preflight_for_approved_origin():
 def test_parse_origins_rejects_malformed_input(raw, expected):
     # Malformed values must not inject blank origins or duplicates.
     assert _parse_origins(raw) == expected
+
+
+def test_backend_imports_cleanly():
+    # Import integrity: the app module imports without side effects and exposes
+    # the expected FastAPI application metadata.
+    module = importlib.import_module("app.main")
+    assert module.app.title == "Groundline API"
+    assert module.app.version == "0.1.0"
+
+
+def test_app_startup_and_shutdown_lifespan():
+    # Startup check: entering the TestClient context runs the ASGI lifespan
+    # (startup + shutdown) without error, which a bare uvicorn boot would hit.
+    with TestClient(app) as started:
+        assert started.get("/healthz").status_code == 200
