@@ -5,7 +5,7 @@ export function SectionHeading({
   eyebrow,
   title,
   subtitle,
-  align = "left",
+  align = "center",
   className,
 }: {
   eyebrow?: string;

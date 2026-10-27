@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { Reveal } from "@/components/design/Reveal";
 import { SectionHeading } from "@/components/design/SectionHeading";
 import { StatusPill } from "@/components/design/StatusPill";
+import { cn } from "@/lib/utils";
 
 type StageStatus = "available" | "mock" | "planned";
 
@@ -58,11 +59,20 @@ export function Workflow() {
             subtitle="Capture and understanding work today. Grounding, action-preparation and the approval timeline are planned for later integration and are clearly marked."
           />
         </Reveal>
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
           {STAGES.map((stage, i) => (
-            <Reveal key={stage.title} delay={i * 0.06}>
-              <article className="surface flex h-full flex-col gap-3 rounded-[24px] p-6">
-                <div className="flex items-center justify-between">
+            <Reveal
+              key={stage.title}
+              delay={i * 0.06}
+              className={cn(
+                "lg:col-span-2",
+                i === 3 && "lg:col-start-2",
+                i === 4 &&
+                  "sm:col-span-2 sm:w-1/2 sm:justify-self-center lg:col-start-4 lg:w-full",
+              )}
+            >
+              <article className="surface flex h-full flex-col items-center gap-3 rounded-[24px] p-6 text-center">
+                <div className="flex w-full flex-wrap items-center justify-center gap-3">
                   <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-light text-navy">
                     <stage.icon className="h-5 w-5" />
                   </span>

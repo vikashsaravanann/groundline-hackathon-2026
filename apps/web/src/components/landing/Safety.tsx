@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { GlassPanel } from "@/components/design/GlassPanel";
 import { Reveal } from "@/components/design/Reveal";
 import { SectionHeading } from "@/components/design/SectionHeading";
+import { cn } from "@/lib/utils";
 
 const POINTS: { icon: LucideIcon; title: string; body: string }[] = [
   {
@@ -44,9 +45,17 @@ export function Safety() {
               title="Built to keep a human in the loop"
               subtitle="Groundline is designed so you always know what it sees, what it's doing, and what it would do next — before anything happens."
             />
-            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {POINTS.map((p) => (
-                <div key={p.title} className="flex flex-col gap-2 rounded-2xl bg-white/70 p-5">
+            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
+              {POINTS.map((p, i) => (
+                <div
+                  key={p.title}
+                  className={cn(
+                    "flex flex-col items-center gap-2 rounded-2xl bg-white/70 p-5 text-center lg:col-span-2",
+                    i === 3 && "lg:col-start-2",
+                    i === 4 &&
+                      "sm:col-span-2 sm:w-1/2 sm:justify-self-center lg:col-start-4 lg:w-full",
+                  )}
+                >
                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-purple-secondary text-purple-accent">
                     <p.icon className="h-5 w-5" />
                   </span>

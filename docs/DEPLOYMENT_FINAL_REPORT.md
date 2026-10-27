@@ -139,3 +139,8 @@ above remain as evidence of the state at that time.
 - The Studio follow-up removes canned goal suggestions and uses a neutral
   free-text placeholder. The page heading/subheading and five-step workflow
   are centered; narrow screens scroll the workflow within its own region.
+- A subsequent site-wide alignment pass centers landing-page hero/section
+  content, feature and safety cards, footer groups, Studio panel headings, and
+  error/loading content while preserving left-aligned text entry and readable
+  analysis details. Five-card grids center the final two cards on desktop and
+  the final single card at tablet widths.

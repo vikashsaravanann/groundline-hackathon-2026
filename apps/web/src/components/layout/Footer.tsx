@@ -8,16 +8,16 @@ const REPO = "https://github.com/vikashsaravanann/groundline-hackathon-2026";
 export function Footer() {
   return (
     <footer className="mt-24 border-t border-line/70 bg-white/60 px-4 py-12">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8">
-        <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-start">
-          <div className="flex max-w-md flex-col gap-3">
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-8 text-center">
+        <div className="flex w-full flex-col items-center justify-center gap-6">
+          <div className="flex max-w-md flex-col items-center gap-3">
             <Wordmark />
             <p className="text-sm leading-relaxed text-ink-soft">
               From what you see to what gets done — with your approval. A
               human-guided visual AI co-pilot.
             </p>
           </div>
-          <nav aria-label="Footer" className="flex flex-col gap-2 text-sm">
+          <nav aria-label="Footer" className="flex flex-col items-center gap-2 text-sm">
             <Link href="/#how" className="text-ink-soft hover:text-ink">
               How it works
             </Link>
@@ -38,7 +38,7 @@ export function Footer() {
           </nav>
         </div>
 
-        <div className="flex flex-col gap-1 border-t border-line/70 pt-6 text-xs leading-relaxed text-muted">
+        <div className="flex w-full flex-col items-center gap-1 border-t border-line/70 pt-6 text-center text-xs leading-relaxed text-muted">
           <p>
             Independent submission to the Meta Global AI Developer Hackathon 2026
             — Indie Developer track. Not affiliated with, endorsed by, or

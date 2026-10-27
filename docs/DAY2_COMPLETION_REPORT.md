@@ -148,6 +148,10 @@ preserving it as chronological evidence.
   users enter the information they want analyzed. The Studio heading and
   five-step progress row are centered, with local horizontal scrolling on
   narrow viewports.
+- The follow-up alignment pass centers page-level content groups across the
+  landing page, Studio, footer, and status pages. Input and detailed analysis
+  content retain readable text alignment. The final row in both five-card
+  landing sections is centered at tablet and desktop breakpoints.
 
 ### Final H01–H10 status
 

@@ -22,7 +22,7 @@ export function AnalysisPanel({ studio }: { studio: Studio }) {
       aria-live="polite"
       className="glass-panel flex min-h-[420px] flex-col gap-4 rounded-[28px] p-5 sm:p-6"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-center justify-center gap-2 text-center">
         <h2 className="text-base font-semibold text-ink">AI analysis</h2>
         {showResult && <MockLiveBadge source={result.source} />}
       </div>

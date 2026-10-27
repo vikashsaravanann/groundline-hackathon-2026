@@ -53,6 +53,10 @@ items have since been superseded:
   a MOCK request and received fixture results with zero estimated cost.
 - [x] Studio goal entry is free text without canned suggestions; the heading
   and evenly spaced five-step workflow are centered responsively.
+- [x] Shared landing, Studio, footer, and status-page content groups use
+  consistent centered alignment; analysis values and text entry remain easy to
+  read. The final row of five-card grids is centered at tablet and desktop
+  widths.
 - [ ] H02 physical camera workflow remains partially verified.
 - [ ] H09 native Safari and Firefox workflows remain unverified.
 - [ ] Supabase is not an application dependency; the inspected project had no
