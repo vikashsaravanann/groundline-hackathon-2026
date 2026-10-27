@@ -10,7 +10,7 @@ import type { Studio } from "@/hooks/useStudio";
 import { UploadDropzone } from "./UploadDropzone";
 
 export function CameraPanel({ studio }: { studio: Studio }) {
-  const { status, camera, image } = studio;
+  const { status, camera, image, capturing } = studio;
   // Destructure the ref into its own binding so reads of the other camera
   // members aren't flagged as ref access during render.
   const { active, hasMultipleCameras, videoRef, switchCamera } = camera;
@@ -35,7 +35,13 @@ export function CameraPanel({ studio }: { studio: Studio }) {
       const availableWidth = panel.clientWidth - horizontalPadding;
       if (availableWidth <= 0) return;
 
-      const aspect = image ? image.width / image.height : frameAspect;
+      // Camera stills are cropped to the dashed frame, whose ratio differs
+      // slightly from the sensor stream. Keep that camera surface fixed while
+      // switching live → still → retake to avoid a visible layout/background
+      // jump. Uploaded images can size to their own aspect ratio.
+      const aspect = image?.origin === "upload"
+        ? image.width / image.height
+        : frameAspect;
       const maxHeight = Math.min(window.innerHeight * 0.68, 680);
       let width = availableWidth;
       let height = width / aspect;
@@ -73,8 +79,11 @@ export function CameraPanel({ studio }: { studio: Studio }) {
       <div className="flex flex-col items-center justify-center gap-2 text-center">
         <h2 className="text-base font-semibold text-ink">Capture</h2>
         {showVideo && (
-          <StatusPill tone="danger" icon={<span className="h-2 w-2 animate-pulse rounded-full bg-white" />}>
-            Camera on
+          <StatusPill
+            tone={capturing ? "neutral" : "danger"}
+            icon={<span className={cn("h-2 w-2 rounded-full", capturing ? "bg-blue-accent" : "animate-pulse bg-white")} />}
+          >
+            {capturing ? "Capturing steady frame…" : "Camera on"}
           </StatusPill>
         )}
         {showPreview && (
@@ -169,16 +178,20 @@ export function CameraPanel({ studio }: { studio: Studio }) {
 
         {showVideo && (
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => studio.capture(captureFrameRef.current)} className="flex-1">
+            <Button
+              onClick={() => studio.capture(captureFrameRef.current)}
+              disabled={capturing}
+              className="flex-1"
+            >
               <Camera className="h-4 w-4" />
-              Capture snapshot
+              {capturing ? "Capturing…" : "Capture snapshot"}
             </Button>
             {hasMultipleCameras && (
-              <Button variant="secondary" onClick={switchCamera} aria-label="Switch camera">
+              <Button variant="secondary" onClick={switchCamera} disabled={capturing} aria-label="Switch camera">
                 <SwitchCamera className="h-4 w-4" />
               </Button>
             )}
-            <Button variant="danger" onClick={studio.stopCamera}>
+            <Button variant="danger" onClick={studio.stopCamera} disabled={capturing}>
               <CircleStop className="h-4 w-4" />
               Stop
             </Button>

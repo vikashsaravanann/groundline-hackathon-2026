@@ -66,6 +66,8 @@ describe("sourceCropForFrame", () => {
     const video = {
       videoWidth: 1920,
       videoHeight: 1080,
+      readyState: HTMLMediaElement.HAVE_CURRENT_DATA,
+      requestVideoFrameCallback: (callback: VideoFrameRequestCallback) => callback(0, {} as VideoFrameMetadata),
       getBoundingClientRect: () => ({ left: 0, top: 0, width: 400, height: 300 }),
     } as unknown as HTMLVideoElement;
     const frame = {

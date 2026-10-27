@@ -80,10 +80,32 @@ export function useCamera(): CameraController {
 
   const attach = useCallback(async (facing: "environment" | "user") => {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: facing },
+      video: {
+        facingMode: facing,
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 30, max: 30 },
+      },
       audio: false,
     });
     streamRef.current = stream;
+    // Prefer continuous autofocus when the device exposes it. Unsupported
+    // camera controls are best-effort and must not block the preview.
+    const track = stream.getVideoTracks()[0];
+    if (track && typeof track.getCapabilities === "function") {
+      try {
+        const capabilities = track.getCapabilities() as MediaTrackCapabilities & {
+          focusMode?: string[];
+        };
+        if (capabilities.focusMode?.includes("continuous")) {
+          await track
+            .applyConstraints({ advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet] })
+            .catch(() => {});
+        }
+      } catch {
+        // Camera focus controls vary by browser/device; preview remains usable.
+      }
+    }
     const v = videoRef.current;
     if (v) {
       v.srcObject = stream;

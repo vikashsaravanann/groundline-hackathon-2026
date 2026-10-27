@@ -149,3 +149,16 @@ published). No history rewrite, no force-push, no cloud changes.
 - Voice remains deferred; typed input remains the supported intake. No SAM or
   later-milestone work was started. Physical camera, native Safari, Firefox,
   WebKit automation, and public search crawler appearance remain unverified.
+
+## Camera capture follow-up — 27 October 2026
+
+- Fixed the Retake state so a previous still cannot hide the restarted camera
+  preview. Capture waits briefly for a presented frame, prevents duplicate
+  capture taps, requests higher-resolution video, and best-effort enables
+  supported continuous autofocus.
+- Kept the camera viewport dimensions stable through live, captured, and
+  retake states; uploaded images retain their natural aspect ratio.
+- Frontend verification: 27 tests passed; TypeScript, lint, and production
+  build passed. The local Chrome camera permission request remained pending,
+  so no physical camera capture/retake pass is claimed. Safari/Firefox remain
+  unverified. This change is local and unpublished.

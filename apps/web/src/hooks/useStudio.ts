@@ -11,6 +11,7 @@ import { type CameraController, useCamera } from "./useCamera";
 
 export interface Studio {
   status: StudioStatus;
+  capturing: boolean;
   camera: CameraController;
   image: SelectedImage | null;
   objective: string;
@@ -38,6 +39,8 @@ export function useStudio(): Studio {
   const [objective, setObjective] = useState("");
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<StudioError | null>(null);
+  const [capturing, setCapturing] = useState(false);
+  const captureInProgress = useRef(false);
 
   // Guards against a stale response landing after cancel / a newer request.
   const requestSeq = useRef(0);
@@ -51,6 +54,9 @@ export function useStudio(): Studio {
   const canAnalyze = Boolean(image) && objectiveValid && status !== "analyzing";
 
   const startCamera = useCallback(async () => {
+    // Retake must remove the previous still before requesting a fresh stream;
+    // otherwise the still-preview branch hides the newly attached video.
+    setImage(null);
     setError(null);
     setResult(null);
     setStatus("requesting-camera");
@@ -69,8 +75,11 @@ export function useStudio(): Studio {
   }, [camera, image]);
 
   const capture = useCallback(async (captureFrame?: HTMLElement | null) => {
+    if (captureInProgress.current) return;
     const v = camera.videoRef.current;
-    if (!v) return;
+    if (!v || !camera.active) return;
+    captureInProgress.current = true;
+    setCapturing(true);
     try {
       const snap = await captureFromVideo(v, captureFrame);
       setImage(snap);
@@ -85,6 +94,9 @@ export function useStudio(): Studio {
         message: err instanceof Error ? err.message : "Could not capture the frame.",
         hint: "Press Retake to capture another still.",
       });
+    } finally {
+      captureInProgress.current = false;
+      setCapturing(false);
     }
   }, [camera]);
 
@@ -200,6 +212,7 @@ export function useStudio(): Studio {
 
   return {
     status,
+    capturing,
     camera,
     image,
     objective,

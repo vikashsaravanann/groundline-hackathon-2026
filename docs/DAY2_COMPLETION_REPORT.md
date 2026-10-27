@@ -153,6 +153,30 @@ preserving it as chronological evidence.
   content retain readable text alignment. The final row in both five-card
   landing sections is centered at tablet and desktop breakpoints.
 
+### Camera capture correction — 27 October 2026
+
+- Fixed Retake's stale-still state: starting a new camera session clears the
+  previous captured/uploaded image before the video preview is shown.
+- Camera capture now waits for a presented video frame (bounded to 500 ms when
+  `requestVideoFrameCallback` is available), prevents duplicate capture clicks,
+  and keeps Stop/Switch disabled while the still is being encoded.
+- Camera requests prefer 1920 × 1080 at up to 30 fps and enable continuous
+  autofocus only when the browser/device exposes that capability. Unsupported
+  focus controls remain non-blocking.
+- The camera viewport retains the live stream's dimensions while transitioning
+  to the dashed-frame crop and back to Retake, avoiding a camera/still layout
+  jump. Uploaded images continue to use their own aspect ratio.
+- Fresh frontend verification: 27 Vitest tests passed; `npx tsc --noEmit`,
+  `npm run lint`, and `npm run build` passed. The local Studio rendered in
+  Chrome. Its camera permission request remained pending in this browser
+  environment, so this is not a physical camera capture/retake verification.
+- H02 remains **PARTIALLY VERIFIED** until camera permission, live preview,
+  readable capture, retake, stop/track release, and upload fallback are tested
+  on the intended phone. H06's retake path has a regression test, but the whole
+  milestone is not signed off. H09 remains **PARTIALLY VERIFIED** pending the
+  handbook's cross-browser/accessibility evidence. Voice remains deferred as
+  allowed by the Day 2 go/no-go gate.
+
 ### Final H01–H10 status
 
 | Gate | Status | Current evidence |

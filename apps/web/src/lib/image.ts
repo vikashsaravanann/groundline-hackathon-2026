@@ -15,6 +15,7 @@ export async function captureFromVideo(
   video: HTMLVideoElement,
   captureFrame?: HTMLElement | null,
 ): Promise<SelectedImage> {
+  await waitForPresentedVideoFrame(video);
   const vw = video.videoWidth;
   const vh = video.videoHeight;
   if (!vw || !vh) {
@@ -44,6 +45,51 @@ export async function captureFromVideo(
     crop.height,
   );
   return encode(canvas, "camera");
+}
+
+/**
+ * Wait for a camera frame to reach the compositor before reading the video
+ * element. This avoids grabbing an old/partially-updated frame immediately
+ * after a tap, especially on mobile Safari. The bounded fallback keeps capture
+ * responsive on browsers that do not implement requestVideoFrameCallback.
+ */
+async function waitForPresentedVideoFrame(video: HTMLVideoElement): Promise<void> {
+  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+    await waitForAnimationFrames(2);
+  }
+  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+    throw new Error("The camera is still preparing a clear frame — hold steady and try again.");
+  }
+
+  if (typeof video.requestVideoFrameCallback === "function") {
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        resolve();
+      };
+      const timeout = window.setTimeout(finish, 500);
+      video.requestVideoFrameCallback(() => finish());
+    });
+    return;
+  }
+
+  await waitForAnimationFrames(2);
+}
+
+function waitForAnimationFrames(count: number): Promise<void> {
+  return new Promise((resolve) => {
+    const next = (remaining: number) => {
+      if (remaining <= 0) {
+        resolve();
+        return;
+      }
+      window.requestAnimationFrame(() => next(remaining - 1));
+    };
+    next(count);
+  });
 }
 
 export interface ImageRect {
