@@ -64,3 +64,16 @@ items have since been superseded:
 
 Final status: **engineering complete; manual camera and cross-browser checks
 outstanding.**
+
+## Physical camera verification addendum — 27 October 2026
+
+The earlier camera checklist is a historical snapshot. In Chrome on the Mac,
+Groundline requested camera access only after Start Camera was clicked, showed
+a live preview, captured a still, reopened the preview through Retake, captured
+again, and returned to the inactive camera state on Stop. The camera indicator
+turned off. **The physical camera capture/retake/stop sequence is verified.**
+
+Manual permission-denial and file-picker upload fallback were not verified in
+that session. Safari and Firefox cross-browser checks also remain outstanding;
+therefore the complete Day 2 release checklist is not yet signed off. See
+`DAY2_COMPLETION_REPORT.md` for the evidence and scope.

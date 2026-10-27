@@ -151,6 +151,14 @@ export function Footer() {
             <p className="mt-4 text-xs leading-relaxed text-muted">
               The homepage example is synthetic and marked SAMPLE · MOCK. The public API is also forced to MOCK; these labels never represent a live model result.
             </p>
+            <div className="mt-4 flex flex-1 flex-col justify-center rounded-2xl border border-line/70 bg-white/75 p-4">
+              <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">Reviewer checklist</h3>
+              <ul className="mt-3 space-y-3 text-sm leading-relaxed text-ink-soft">
+                <li><span className="font-semibold text-ink">User control:</span> the person chooses the image and states the goal.</li>
+                <li><span className="font-semibold text-ink">Clear provenance:</span> a fixture is marked MOCK and is not presented as a model result.</li>
+                <li><span className="font-semibold text-ink">Human review:</span> fields can be checked and corrected before reuse.</li>
+              </ul>
+            </div>
             <div className="mt-auto flex flex-wrap gap-2 pt-5">
               <Link href="/studio" className="rounded-full bg-navy px-4 py-2 text-xs font-semibold text-white transition hover:bg-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent focus-visible:ring-offset-2">Try the Studio</Link>
               <Link href="/how-it-works" className="rounded-full border border-line bg-white/80 px-4 py-2 text-xs font-semibold text-navy transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent focus-visible:ring-offset-2">Read the workflow</Link>

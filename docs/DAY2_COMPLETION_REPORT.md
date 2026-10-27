@@ -182,7 +182,7 @@ preserving it as chronological evidence.
 | Gate | Status | Current evidence |
 |---|---|---|
 | H01 Frontend/backend and typed request | VERIFIED | Production Studio completed a MOCK request; provider health is 200. |
-| H02 Physical camera | PARTIALLY VERIFIED | Browser camera code is covered, but real permission/capture/cleanup not performed. |
+| H02 Physical camera | VERIFIED (camera sequence) | 27 Oct 2026 Chrome on the Mac with the FaceTime HD / iPhone Continuity Camera: explicit permission, live preview, still capture, Retake reopening the live stream, recapture, and Stop returning to the inactive state were observed. Browser upload fallback was not verified in that manual session; its automated coverage remains. |
 | H03 Image validation and processing | VERIFIED | Existing frontend/backend validation tests pass. |
 | H04 Input validation | VERIFIED | Current backend suite: 46 passed. |
 | H05 Muse Spark LIVE verification | VERIFIED (prior authorized evidence) | Historical one-off evidence retained; no repeat paid call. |
@@ -214,3 +214,26 @@ preserving it as chronological evidence.
   **PARTIALLY VERIFIED**; a real camera permission/capture/stop/retake check is
   still needed. Safari and Firefox end-to-end checks also remain outstanding,
   so H09 remains **PARTIALLY VERIFIED** and Day 2 is not fully closed.
+
+### Physical camera verification addendum — 27 October 2026
+
+- The earlier camera entries above are historical and are superseded for the
+  physical-camera sequence by this direct Chrome check on the Mac. The device
+  inventory showed the FaceTime HD Camera and Vikash's iPhone 14 Pro Continuity
+  Camera.
+- In local Groundline Studio, opening the page did not start capture. Clicking
+  Start Camera requested access; after access was granted, a live preview was
+  visible. Capture produced a still and the captured state was visible. Retake
+  reopened the live preview; a second capture succeeded. Stop returned the UI
+  to its inactive Start Camera state, and the camera indicator turned off.
+  The camera image was not submitted for AI analysis, and no paid inference was
+  made during this check.
+- **Physical camera capture / retake / stop sequence: VERIFIED.** Permission
+  denial and manual file-picker upload fallback were not completed in this
+  session (the browser automation could not grant its extension access to local
+  file URLs). Automated upload and validation coverage remains documented in
+  H03.
+- H09 remains **PARTIALLY VERIFIED** because Safari and Firefox end-to-end
+  checks are outstanding. Voice remains deferred as allowed by the handbook.
+  Accordingly, the camera sequence is complete, but this evidence alone does
+  not close every Day 2 gate.
