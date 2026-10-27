@@ -5,6 +5,7 @@ import logging
 import os
 import time
 import uuid
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,7 +37,22 @@ def _parse_origins(raw: str) -> list[str]:
     seen: list[str] = []
     for origin in raw.split(","):
         origin = origin.strip()
-        if origin and origin not in seen:
+        if not origin:
+            continue
+        if origin == "*":
+            raise ValueError("ALLOWED_ORIGINS must list exact origins; wildcard is not allowed")
+        parsed = urlsplit(origin)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.path != ""
+            or parsed.query
+            or parsed.fragment
+            or parsed.username
+            or parsed.password
+        ):
+            raise ValueError(f"ALLOWED_ORIGINS entry is not an origin: {origin!r}")
+        if origin not in seen:
             seen.append(origin)
     return seen
 
@@ -51,6 +67,7 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
+    expose_headers=["X-Correlation-ID"],
 )
 
 
@@ -70,13 +87,13 @@ def healthz() -> HealthResponse:
 
     ``mode`` is docs/SECURITY.md rule 7 in machine-readable form: a mocked path
     must announce itself as MOCK and must never be presented as a live model
-    call. It is "live" when MODEL_API_KEY is set (the real adapter path is
-    selected) and "MOCK" when it is not. It reflects the configured operating
-    mode, not a verified upstream connection. The key value itself is never
-    returned, logged, or echoed, and ``meta_key_present`` is deliberately not
-    exposed.
+    call. It follows the same mode selector as inference, including
+    ``GROUNDLINE_FORCE_MOCK``. A "live" mode means the live adapter is
+    configured, not that the upstream is reachable. The key value itself is
+    never returned, logged, or echoed, and ``meta_key_present`` is deliberately
+    not exposed.
     """
-    mode = "live" if os.environ.get("MODEL_API_KEY") else "MOCK"
+    mode = "MOCK" if meta_client.use_mock() else "live"
     return HealthResponse(status="ok", version=app.version, mode=mode)
 
 

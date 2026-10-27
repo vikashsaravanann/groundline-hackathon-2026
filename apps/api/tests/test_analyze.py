@@ -267,10 +267,15 @@ def test_trace_logs_length_not_objective_and_sets_correlation_id(monkeypatch, ca
     cumulative_before = main._cumulative_live_cost_usd
 
     with caplog.at_level(logging.INFO, logger="groundline.analyze"):
-        r = client.post("/api/analyze", json=_valid_request(objective=secret_objective))
+        r = client.post(
+            "/api/analyze",
+            json=_valid_request(objective=secret_objective),
+            headers={"Origin": "http://localhost:3000"},
+        )
 
     assert r.status_code == 200
     assert r.headers.get("X-Correlation-ID")  # correlation id returned
+    assert "x-correlation-id" in r.headers.get("access-control-expose-headers", "").lower()
 
     line = "\n".join(rec.getMessage() for rec in caplog.records)
     assert "analyze cid=" in line

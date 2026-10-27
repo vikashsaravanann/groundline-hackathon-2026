@@ -33,6 +33,14 @@ export async function analyzeImage({
   objective,
   signal,
 }: AnalyzeInput): Promise<AnalysisResult> {
+  if (!API_BASE) {
+    throw new ApiError(
+      "network",
+      "The Groundline API is not configured for this deployment.",
+      "Set NEXT_PUBLIC_API_BASE_URL to the HTTPS API origin, then rebuild the frontend.",
+    );
+  }
+
   const controller = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {

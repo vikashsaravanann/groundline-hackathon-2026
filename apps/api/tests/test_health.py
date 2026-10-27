@@ -38,6 +38,14 @@ def test_healthz_never_leaks_credentials():
 def test_mode_is_mock_when_key_absent(monkeypatch):
     # Rule 7: with no key configured, the mocked path announces itself as MOCK.
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    monkeypatch.delenv("GROUNDLINE_FORCE_MOCK", raising=False)
+    body = client.get("/healthz").json()
+    assert body == {"status": "ok", "version": app.version, "mode": "MOCK"}
+
+
+def test_mode_remains_mock_when_forced_even_if_key_is_present(monkeypatch):
+    monkeypatch.setenv("MODEL_API_KEY", SENTINEL_SECRET)
+    monkeypatch.setenv("GROUNDLINE_FORCE_MOCK", "1")
     body = client.get("/healthz").json()
     assert body == {"status": "ok", "version": app.version, "mode": "MOCK"}
 
@@ -45,6 +53,7 @@ def test_mode_is_mock_when_key_absent(monkeypatch):
 def test_mode_is_live_when_key_present(monkeypatch):
     # With a key configured, mode flips to live — the real adapter path. The
     # key value itself must still never appear in the response.
+    monkeypatch.delenv("GROUNDLINE_FORCE_MOCK", raising=False)
     monkeypatch.setenv("MODEL_API_KEY", SENTINEL_SECRET)
     body = client.get("/healthz").json()
     assert body == {"status": "ok", "version": app.version, "mode": "live"}
@@ -105,6 +114,20 @@ def test_cors_preflight_for_approved_origin():
         },
     )
     assert response.headers.get("access-control-allow-origin") == approved
+    assert "POST" in response.headers.get("access-control-allow-methods", "")
+    assert "content-type" in response.headers.get("access-control-allow-headers", "").lower()
+
+
+def test_cors_preflight_rejects_unapproved_origin():
+    response = client.options(
+        "/api/analyze",
+        headers={
+            "Origin": "https://unapproved.example",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert response.headers.get("access-control-allow-origin") != "https://unapproved.example"
 
 
 @pytest.mark.parametrize(
@@ -120,6 +143,14 @@ def test_cors_preflight_for_approved_origin():
 def test_parse_origins_rejects_malformed_input(raw, expected):
     # Malformed values must not inject blank origins or duplicates.
     assert _parse_origins(raw) == expected
+
+
+@pytest.mark.parametrize(
+    "raw", ["*", "https://example.com/", "https://example.com/path", "https://example.com?x=1"]
+)
+def test_parse_origins_rejects_wildcard_or_non_origin_values(raw):
+    with pytest.raises(ValueError):
+        _parse_origins(raw)
 
 
 def test_backend_imports_cleanly():

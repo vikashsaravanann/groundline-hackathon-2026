@@ -1,0 +1,16 @@
+.env
+.env.*
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+node_modules/
+.next/
+*.pem
+*.key
+*.p12
+.DS_Store
+tests/
+requirements-dev.txt

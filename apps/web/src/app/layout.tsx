@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Poppins, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { SITE_URL } from "@/lib/config";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -16,14 +17,13 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-// Set to the deployed HTTPS origin when it is known so social image URLs are
-// absolute and shareable. Local builds avoid emitting localhost URLs.
-const metadataBase = process.env.NEXT_PUBLIC_SITE_URL
-  ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
-  : undefined;
+// Set NEXT_PUBLIC_SITE_URL to the verified HTTPS origin so social preview URLs
+// and the canonical URL are absolute. No hostname is assumed during local builds.
+const metadataBase = SITE_URL;
 
 export const metadata: Metadata = {
   ...(metadataBase ? { metadataBase } : {}),
+  ...(metadataBase ? { alternates: { canonical: "/" } } : {}),
   title: "Groundline — Human-Guided Vision-to-Action AI",
   description:
     "Groundline transforms safe product images and typed goals into reviewable AI-assisted digital tasks, with human control.",

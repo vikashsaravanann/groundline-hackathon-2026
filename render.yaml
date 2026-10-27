@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: groundline-api
+    runtime: docker
+    plan: free
+    region: singapore
+    repo: https://github.com/vikashsaravanann/groundline-hackathon-2026
+    branch: main
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: ./apps/api
+    autoDeployTrigger: checksPass
+    healthCheckPath: /healthz
+    buildFilter:
+      paths:
+        - apps/api/**
+        - render.yaml
+        - .github/workflows/backend-ci.yml
+    envVars:
+      - key: GROUNDLINE_FORCE_MOCK
+        value: "1"
+      - key: ALLOWED_ORIGINS
+        sync: false
