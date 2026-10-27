@@ -25,7 +25,7 @@ const STAGES: Stage[] = [
   {
     icon: Eye,
     title: "Understand",
-    body: "Meta's vision model reads the visible details into structured fields you can review and correct. Available today in MOCK; LIVE once a real Meta response is verified.",
+    body: "The image-understanding flow returns structured visible facts for review. The public demo currently uses a clearly labelled MOCK fixture while live-use safeguards are completed; prior controlled LIVE verification is documented.",
     status: "mock",
   },
   {
@@ -56,7 +56,7 @@ export function Workflow() {
           <SectionHeading
             eyebrow="How it works"
             title="Five steps from what you see to what gets done"
-            subtitle="Capture and understanding work today. Grounding, action-preparation and the approval timeline are planned for later integration and are clearly marked."
+            subtitle="Capture and understanding form the current workflow. Grounding, action preparation and an approval timeline remain planned and are clearly marked."
           />
         </Reveal>
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-6">

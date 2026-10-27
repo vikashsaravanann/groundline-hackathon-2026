@@ -20,21 +20,22 @@ export function Hero() {
             VISION-TO-ACTION AI CO-PILOT
           </StatusPill>
           <h1 className="text-balance text-4xl font-extrabold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-            See it. Ground it.{" "}
+            See it. Understand it.{" "}
             <span className="bg-gradient-to-r from-blue-accent via-purple-accent to-pink-accent bg-clip-text text-transparent">
-              Get it ready.
+              Take the next step.
             </span>
           </h1>
           <p className="max-w-xl text-lg leading-relaxed text-ink-soft">
-            Groundline turns a camera snapshot and a simple goal into structured,
-            reviewable digital assistance — always keeping you in control.
+            Groundline helps you capture or upload an image, identify visible
+            information, and turn it into structured, reviewable assistance —
+            with you in control throughout.
           </p>
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
             <ButtonLink href="/studio" size="lg">
               Open Groundline Studio
               <ArrowRight className="h-4 w-4" />
             </ButtonLink>
-            <ButtonLink href="#how" variant="secondary" size="lg">
+            <ButtonLink href="/workflow" variant="secondary" size="lg">
               Explore the Workflow
             </ButtonLink>
           </div>

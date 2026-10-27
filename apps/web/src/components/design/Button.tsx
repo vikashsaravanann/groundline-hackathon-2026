@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, MouseEventHandler, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
@@ -58,10 +58,15 @@ export function ButtonLink({
   className,
   children,
   href,
-}: CommonProps & { href: string }) {
+  onClick,
+}: CommonProps & {
+  href: string;
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
+}) {
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={cn(BASE, VARIANTS[variant], SIZES[size], className)}
     >
       {children}
