@@ -35,3 +35,28 @@
   call, credential, or schema change was made for closeout.
 - Final status: **engineering complete; manual checks and publication approval
   outstanding.**
+
+## Final release audit addendum — 27 October 2026
+
+The checklist above is retained as a historical snapshot. Its publication
+items have since been superseded:
+
+- [x] Branding and closeout commits are published; current local and remote
+  `main` are at `3d62a184cc65f92e2f46aba9fcee86665b28156e`.
+- [x] Latest Frontend CI `40498275515` and Backend CI `40498275523` passed.
+- [x] Vercel production deployment `dpl_HMEfCGcRpohNoPmB44yyYSfeyvhN` is
+  READY at the exact current commit.
+- [x] External TLS probes verified the frontend custom domain (A+/A) and API
+  custom domain (A); direct TLS from this Mac still resets, so local-network
+  behavior is recorded as a limitation. No DNS records were modified.
+- [x] Render `/healthz` returned HTTP 200 in MOCK mode. Production Studio made
+  a MOCK request and received fixture results with zero estimated cost.
+- [x] Studio goal entry is free text without canned suggestions; the heading
+  and evenly spaced five-step workflow are centered responsively.
+- [ ] H02 physical camera workflow remains partially verified.
+- [ ] H09 native Safari and Firefox workflows remain unverified.
+- [ ] Supabase is not an application dependency; the inspected project had no
+  public tables or migrations and was marked unhealthy by its dashboard.
+
+Final status: **engineering complete; manual camera and cross-browser checks
+outstanding.**

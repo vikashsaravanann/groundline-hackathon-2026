@@ -79,10 +79,3 @@ export const SNAPSHOT_MAX_EDGE = 1280; // longest side, pixels
 // bounded wait with headroom, but never auto-retry: future LIVE requests can
 // incur a charge and the first response may only be delayed, not lost.
 export const ANALYZE_TIMEOUT_MS = 120_000;
-
-// Synthetic example objectives (no real purchases/registrations implied).
-export const EXAMPLE_OBJECTIVES = [
-  "Read the model number from this label.",
-  "Identify the product information I need for a warranty form.",
-  "Explain which visible fields are missing.",
-];

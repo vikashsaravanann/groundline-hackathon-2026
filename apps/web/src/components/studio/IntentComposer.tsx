@@ -4,7 +4,7 @@ import { Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/design/Button";
 import { LogoMark } from "@/components/brand/Logo";
-import { EXAMPLE_OBJECTIVES, MAX_OBJECTIVE_CHARS } from "@/lib/config";
+import { MAX_OBJECTIVE_CHARS } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import type { Studio } from "@/hooks/useStudio";
 
@@ -19,13 +19,13 @@ export function IntentComposer({ studio }: { studio: Studio }) {
       aria-label="Describe your goal"
       className="glass-panel flex flex-col gap-3 rounded-[28px] p-5 sm:p-6"
     >
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col items-center gap-1 text-center">
         <label htmlFor="objective" className="text-base font-semibold text-ink">
-          What would you like to get done?
+          Describe your goal in your own words
         </label>
         <p className="text-xs text-muted">
-          Describe your goal in your own words. Nothing is sent until you press
-          Analyze.
+          Tell Groundline what information to analyze in the image. Nothing is
+          sent until you press Analyze.
         </p>
       </div>
 
@@ -39,7 +39,7 @@ export function IntentComposer({ studio }: { studio: Studio }) {
             maxLength={MAX_OBJECTIVE_CHARS + 50}
             rows={3}
             disabled={analyzing}
-            placeholder="Example: Find the model number and help me prepare a warranty registration."
+            placeholder="Enter the information you want analyzed…"
             className="w-full resize-none rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus-visible:border-blue-accent focus-visible:outline-none disabled:opacity-60"
           />
           {objective && !analyzing && (
@@ -55,20 +55,7 @@ export function IntentComposer({ studio }: { studio: Studio }) {
         </div>
       </div>
 
-      <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 flex-wrap gap-1.5">
-          {EXAMPLE_OBJECTIVES.map((ex) => (
-            <button
-              key={ex}
-              type="button"
-              disabled={analyzing}
-              onClick={() => setObjective(ex)}
-              className="rounded-full border border-line bg-white px-3 py-1 text-xs text-ink-soft transition hover:border-blue-accent hover:text-navy disabled:opacity-50"
-            >
-              {ex}
-            </button>
-          ))}
-        </div>
+      <div className="flex w-full justify-end">
         <span className={cn("shrink-0 self-end text-xs sm:self-auto", over ? "text-danger" : "text-muted")}>{remaining}</span>
       </div>
 

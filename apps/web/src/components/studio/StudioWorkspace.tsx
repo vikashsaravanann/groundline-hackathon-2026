@@ -11,7 +11,7 @@ export function StudioWorkspace() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-8">
-      <header className="flex flex-col gap-2">
+      <header className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
           Turn what you see into your next step.
         </h1>

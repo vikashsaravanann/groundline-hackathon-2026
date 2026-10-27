@@ -104,3 +104,62 @@ the earlier entries remain as chronological evidence.
   environment; read-only remote verification used the connected GitHub tool.
   Search crawler/favicon appearance requires a public deployment and remains
   externally unverified. No SAM or later milestone work was started.
+
+## Final production and Day 2 audit addendum — 27 October 2026
+
+This entry supersedes the publication and deployment status above while
+preserving it as chronological evidence.
+
+- Published and local `main` are at
+  `3d62a184cc65f92e2f46aba9fcee86665b28156e`; working tree clean. The commit
+  adds a 120-second client timeout to accommodate the observed Render Free
+  cold-start window and does not add automatic retries.
+- Vercel production deployment
+  `dpl_HMEfCGcRpohNoPmB44yyYSfeyvhN` is READY from that commit. Frontend CI
+  [40498275515](https://github.com/vikashsaravanann/groundline-hackathon-2026/actions/runs/40498275515)
+  and Backend CI
+  [40498275523](https://github.com/vikashsaravanann/groundline-hackathon-2026/actions/runs/40498275523)
+  passed. The project has Git auto-deploys, but no Vercel deployment check is
+  configured to gate them on GitHub Actions.
+- The Render provider hostname returned HTTP 200 with `mode: MOCK`; the
+  production Studio request returned fixture results and zero estimated cost.
+  No paid model request was made. Render remains on its prior live deployment
+  because this commit changed frontend files only.
+- Both custom domains have verified provider DNS assignments and external
+  trusted-TLS results (frontend A+/A, API A). Independent HTTPS fetching
+  succeeded; direct TLS from this Mac reset, so that path remains a local
+  network discrepancy. No DNS changes were made.
+- Supabase read-only inspection targeted project `hstznpxnxxxniukkqosi`:
+  URL matched that project, public tables and migrations were empty, and the
+  dashboard showed unhealthy at inspection time. No schema or project changes
+  were made. Groundline does not currently implement application database
+  operations.
+- Latest frontend checks passed: install, lint, TypeScript, 22 tests across 7
+  files, and production build. Backend: 46 pytest tests passed and `pip check`
+  found no broken requirements.
+- H02 remains **PARTIALLY VERIFIED**: no real camera permission, capture,
+  retake, or stop/release sequence was performed. H09 remains
+  **PARTIALLY VERIFIED**: prior Chrome responsive evidence is retained, but
+  native Safari and Firefox workflows remain unverified. Typed input remains
+  available; voice is explicitly deferred.
+- The public Supabase project showed no tables/migrations and no application
+  integration is implemented. No future automation module was started.
+- The goal composer contains no suggested objective buttons or sample prompt;
+  users enter the information they want analyzed. The Studio heading and
+  five-step progress row are centered, with local horizontal scrolling on
+  narrow viewports.
+
+### Final H01–H10 status
+
+| Gate | Status | Current evidence |
+|---|---|---|
+| H01 Frontend/backend and typed request | VERIFIED | Production Studio completed a MOCK request; provider health is 200. |
+| H02 Physical camera | PARTIALLY VERIFIED | Browser camera code is covered, but real permission/capture/cleanup not performed. |
+| H03 Image validation and processing | VERIFIED | Existing frontend/backend validation tests pass. |
+| H04 Input validation | VERIFIED | Current backend suite: 46 passed. |
+| H05 Muse Spark LIVE verification | VERIFIED (prior authorized evidence) | Historical one-off evidence retained; no repeat paid call. |
+| H06 State and cancellation | VERIFIED | Existing state-management tests and reset flow remain. |
+| H07 Voice | DEFERRED AS PER HANDBOOK | Typed objective remains the supported input. |
+| H08 Tracing and MOCK cost | VERIFIED | Production response was MOCK, zero estimated cost, correlation tracing; API source logs metadata only. |
+| H09 Responsive/accessibility/browsers | PARTIALLY VERIFIED | Chrome responsive evidence exists; Safari and Firefox not exercised. |
+| H10 Release | VERIFIED | Commit published, latest frontend/backend CI passed, Vercel production READY. |

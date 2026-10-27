@@ -19,7 +19,7 @@ Verification date: 2026-10-27
 - Workspace: `My Workspace` (`tea-d9vchsu7bikc73d6srv0`)
 - Blueprint: `groundline-backend` (`exs-dbg7p6l9fdbs73d1d560`)
 - Service: `groundline-api` (`srv-dbg7pe6c6qcc73ek44ig`)
-- Repository/branch: `vikashsaravann/groundline-hackathon-2026`, `main`
+- Repository/branch: `vikashsaravanann/groundline-hackathon-2026`, `main`
 - Runtime: Docker; Dockerfile `apps/api/Dockerfile`; context `apps/api`
 - Plan/region: Free / Singapore
 - Health path: `/healthz`; deployment trigger setting: `checksPass`
@@ -89,3 +89,53 @@ Verification date: 2026-10-27
 5. Verify the user's physical camera workflow with a harmless synthetic label;
    no live camera capture was performed in this deployment run.
 6. Safari and Firefox remain unverified.
+
+## Final integration audit addendum — 27 October 2026
+
+This addendum records the latest audit. Historical deployment observations
+above remain as evidence of the state at that time.
+
+- GitHub `main`, local `main`, and `origin/main` are at
+  `3d62a184cc65f92e2f46aba9fcee86665b28156e`. The working tree was clean.
+  The commit raises the frontend request timeout to 120 seconds for Render Free
+  cold starts and adds a regression test; it does not automatically retry.
+- Vercel project `groundline-hackathon-2026`
+  (`prj_n8QKE4dlA5NH3a0Gcs9tv5cmrs3v`) is connected to the expected GitHub
+  repository with root `apps/web`. Production deployment
+  `dpl_HMEfCGcRpohNoPmB44yyYSfeyvhN` is READY and built from the exact commit
+  above. Git deployments are active. Project checks are not configured, so
+  GitHub Actions are not represented as a Vercel deployment gate.
+- Frontend and backend CI both passed for the latest commit:
+  [Frontend CI 40498275515](https://github.com/vikashsaravanann/groundline-hackathon-2026/actions/runs/40498275515)
+  and
+  [Backend CI 40498275523](https://github.com/vikashsaravanann/groundline-hackathon-2026/actions/runs/40498275523).
+- The custom frontend hostname is verified and assigned to the correct Vercel
+  project. Its authoritative DNS CNAME matches Vercel's current target. The
+  custom API hostname CNAME points to the Render service. Public SSL Labs
+  probes reported the frontend at A+/A and API at A; external HTTPS fetches
+  returned the Groundline homepage and API `/healthz` JSON respectively. This
+  Mac's direct TLS attempts reset without a certificate, so local-network
+  access remains discrepant. DNS was not changed.
+- Render remains on the live Free/Singapore Docker service and
+  `checksPass`; the current live deployment is
+  `dep-dbg7sinb9u1s73ch8s9g` at `38bc4b3`. A direct GET to
+  `https://groundline-api-8wqb.onrender.com/healthz` returned HTTP 200 and
+  `mode: MOCK`. A production Studio request on the new Vercel build returned
+  fixture facts and zero estimated cost. No paid Meta inference was run.
+- The production Supabase project reference and URL were confirmed through the
+  dedicated read-only Groundline connection. Public schema table list and
+  migration list were empty. Supabase dashboard marked the project unhealthy
+  at inspection time. No database changes were made; application database
+  integration remains unimplemented.
+- Fresh checks: frontend `npm ci`, lint, TypeScript, 22 tests across 7 files,
+  and production build passed; backend pytest passed 46 tests and `pip check`
+  reported no broken requirements. The frontend build reported the repository's
+  existing tooling deprecation/configuration warnings.
+- H02 remains **PARTIALLY VERIFIED** because no physical capture/permission
+  workflow was completed. H09 remains **PARTIALLY VERIFIED**: the Chrome
+  responsive evidence remains available, but native Safari and Firefox were
+  not exercised in this audit. Voice remains deferred; typed input is
+  functional.
+- The Studio follow-up removes canned goal suggestions and uses a neutral
+  free-text placeholder. The page heading/subheading and five-step workflow
+  are centered; narrow screens scroll the workflow within its own region.
