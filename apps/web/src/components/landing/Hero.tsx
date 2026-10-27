@@ -20,7 +20,7 @@ export function Hero() {
             VISION-TO-ACTION AI CO-PILOT
           </StatusPill>
           <h1 className="text-balance text-4xl font-extrabold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-            See it. Understand it.{" "}
+            See it. Ground it.{" "}
             <span className="bg-gradient-to-r from-blue-accent via-purple-accent to-pink-accent bg-clip-text text-transparent">
               Get it ready.
             </span>

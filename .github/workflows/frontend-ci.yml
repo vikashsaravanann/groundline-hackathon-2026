@@ -1,0 +1,48 @@
+name: Frontend CI
+
+# Lint, unit-test and production-build the Next.js app. Deterministic and
+# offline: no Meta or Supabase credentials, no paid model calls — the Studio's
+# tests run against MOCK fixtures only.
+
+on:
+  push:
+    paths:
+      - "apps/web/**"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - ".github/workflows/frontend-ci.yml"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: apps/web
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests (Vitest, MOCK only)
+        run: npm test
+
+      - name: Production build (includes TypeScript check)
+        run: npm run build

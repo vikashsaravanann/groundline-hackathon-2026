@@ -102,6 +102,14 @@ def test_rejects_empty_objective():
     assert "objective must not be empty" in r.text
 
 
+@pytest.mark.parametrize("blank", ["", "\n", "\t  \n", "     "])
+def test_rejects_whitespace_or_empty_objective_variants(blank):
+    # Empty and whitespace-only objectives are both rejected (H04).
+    r = client.post("/api/analyze", json=_valid_request(objective=blank))
+    assert r.status_code == 422
+    assert "objective must not be empty" in r.text
+
+
 def test_rejects_objective_over_500_chars():
     r = client.post("/api/analyze", json=_valid_request(objective="x" * 501))
     assert r.status_code == 422

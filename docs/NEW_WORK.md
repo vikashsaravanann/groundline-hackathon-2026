@@ -89,3 +89,32 @@ authorization) · DEFERRED (belongs to a later day).
   snapshot capture, typed intake, image size/MIME validation, Muse Spark
   image-analysis adapter (reuse the verified base URL / model id / auth pattern)
   with a safe fixture fallback, loading/error states, tests, mobile layout.
+
+## Day 2 — 27 October 2026
+
+All work local; nothing pushed (remote still at `4b8467f`; `apps/web` not yet
+published). No history rewrite, no force-push, no cloud changes.
+
+- Backend adapter + endpoint: `app/meta_client.py` (single entry point, explicit
+  reasoning effort, `store=false`, timeout + one retry, typed `output[]` parse),
+  `POST /api/analyze` with pydantic validation, MOCK/live switch (rule 7), and
+  request tracing (correlation id, tokens, running cost; key never logged).
+  Commits `c88f3ff`, `9c0bf44`.
+- Frontend: premium light-glass landing (`/`) + functional Studio (`/studio`) —
+  consent-gated camera + upload, in-browser resize/MIME/4 MiB validation, typed
+  objective, explicit 8-state machine, editable normalized results, MOCK/LIVE
+  badge. Next.js 16, TS strict, Tailwind 4, Poppins, Motion, lucide, Vitest.
+  Commits `e922f54` (first capture flow), `b2c62ba` (full workbench).
+- Live image understanding VERIFIED: one authorized call read `GL-DEMO-2048`
+  from a synthetic label; 691 tokens, ~$0.00156, status completed, no secret
+  leaked. See `docs/IMAGE_INFERENCE_VERIFICATION.md`.
+- Authorized model spend to date: two live calls (text fixture ~$0.0013 +
+  image ~$0.00156) ≈ $0.0028 of the $150 credit. No retries; none in CI/tests.
+- Added Frontend CI (`.github/workflows/frontend-ci.yml`, MOCK-only, no
+  credentials). Voice intake deferred (`docs/VOICE_DECISION.md`); typed input is
+  the supported path. New records: `DAY2_COMPLETION_REPORT.md`,
+  `FRONTEND_DESIGN_AUDIT.md`, `REQUEST_TRACING.md`.
+- Tests: frontend 14 (Vitest), backend 40 (pytest), both green; FE build static;
+  `npm audit` 0 vulns; `pip check` clean.
+- Submission portal: not accessed (no authenticated access this session); fields
+  to confirm manually tracked in `docs/SUBMISSION_CHECKLIST.md`.

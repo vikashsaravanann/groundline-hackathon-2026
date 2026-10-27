@@ -5,11 +5,13 @@ import { Reveal } from "@/components/design/Reveal";
 import { SectionHeading } from "@/components/design/SectionHeading";
 import { StatusPill } from "@/components/design/StatusPill";
 
+type StageStatus = "available" | "mock" | "planned";
+
 interface Stage {
   icon: LucideIcon;
   title: string;
   body: string;
-  planned?: boolean;
+  status: StageStatus;
 }
 
 const STAGES: Stage[] = [
@@ -17,29 +19,31 @@ const STAGES: Stage[] = [
     icon: Camera,
     title: "Capture",
     body: "Give explicit permission, then take one still of a product label — or upload an image. Nothing is captured automatically.",
+    status: "available",
   },
   {
     icon: Eye,
     title: "Understand",
-    body: "Meta's vision model reads the visible details and returns structured fields you can review and correct.",
+    body: "Meta's vision model reads the visible details into structured fields you can review and correct. Available today in MOCK; LIVE once a real Meta response is verified.",
+    status: "mock",
   },
   {
     icon: Crosshair,
     title: "Ground",
     body: "The relevant region is highlighted so you can see exactly what informed the result.",
-    planned: true,
+    status: "planned",
   },
   {
     icon: ClipboardCheck,
     title: "Prepare",
     body: "Groundline drafts a constrained, fictional digital action — never a real purchase or submission.",
-    planned: true,
+    status: "planned",
   },
   {
     icon: UserCheck,
     title: "Review",
     body: "You approve, edit, or reject every step. Approved actions are recorded in an audit timeline.",
-    planned: true,
+    status: "planned",
   },
 ];
 
@@ -62,10 +66,14 @@ export function Workflow() {
                   <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-light text-navy">
                     <stage.icon className="h-5 w-5" />
                   </span>
-                  {stage.planned ? (
-                    <StatusPill tone="purple">Planned</StatusPill>
-                  ) : (
+                  {stage.status === "available" && (
                     <StatusPill tone="success">Available</StatusPill>
+                  )}
+                  {stage.status === "mock" && (
+                    <StatusPill tone="blue">Available · MOCK</StatusPill>
+                  )}
+                  {stage.status === "planned" && (
+                    <StatusPill tone="purple">Planned</StatusPill>
                   )}
                 </div>
                 <h3 className="text-lg font-bold text-ink">
