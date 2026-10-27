@@ -16,15 +16,40 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+// Set to the deployed HTTPS origin when it is known so social image URLs are
+// absolute and shareable. Local builds avoid emitting localhost URLs.
+const metadataBase = process.env.NEXT_PUBLIC_SITE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
+  : undefined;
+
 export const metadata: Metadata = {
-  title: "Groundline — See It. Understand It. Get It Ready.",
+  ...(metadataBase ? { metadataBase } : {}),
+  title: "Groundline — Human-Guided Vision-to-Action AI",
   description:
-    "Groundline is a human-guided visual AI co-pilot that turns a product image and a goal into reviewable digital assistance.",
+    "Groundline transforms safe product images and typed goals into reviewable AI-assisted digital tasks, with human control.",
   openGraph: {
-    title: "Groundline — See It. Understand It. Get It Ready.",
+    title: "Groundline — Human-Guided Vision-to-Action AI",
     description:
-      "A human-guided visual AI co-pilot: turn a camera snapshot and a simple goal into structured, reviewable digital assistance.",
+      "Groundline transforms safe product images and typed goals into reviewable AI-assisted digital tasks, with human control.",
     type: "website",
+    siteName: "Groundline",
+    images: metadataBase ? [
+      {
+        url: new URL("/brand/groundline-approved-original.png", metadataBase),
+        width: 1254,
+        height: 1254,
+        alt: "Groundline — Vision-to-action AI",
+      },
+    ] : undefined,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Groundline — Human-Guided Vision-to-Action AI",
+    description:
+      "Groundline transforms safe product images and typed goals into reviewable AI-assisted digital tasks, with human control.",
+    images: metadataBase
+      ? [new URL("/brand/groundline-approved-original.png", metadataBase)]
+      : undefined,
   },
 };
 

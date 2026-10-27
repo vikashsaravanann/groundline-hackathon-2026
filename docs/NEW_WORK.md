@@ -118,3 +118,20 @@ published). No history rewrite, no force-push, no cloud changes.
   `npm audit` 0 vulns; `pip check` clean.
 - Submission portal: not accessed (no authenticated access this session); fields
   to confirm manually tracked in `docs/SUBMISSION_CHECKLIST.md`.
+
+## Approved Groundline logo implementation — 27 October 2026
+
+- The user approved the supplied `Groundline-logo.png` artwork as the brand
+  source of truth. Its exact 1254 × 1254 RGB PNG bytes are preserved at
+  `apps/web/public/brand/groundline-approved-original.png`; the copy was checked
+  byte-for-byte against the supplied local original.
+- Derived a clean symbol crop and circular icon exports from that artwork,
+  including ICO frames, Next.js browser/Apple icons, PWA icons, a maskable icon,
+  and a monochrome fallback. The approved geometry and Poppins wordmark remain
+  the application identity; no CSC or unrelated brand art was used.
+- Integrated the mark in the shared header, footer/error wordmark, and existing
+  Studio objective field. Configured App Router metadata, the manifest, and
+  social preview metadata. See `docs/BRAND_IMPLEMENTATION.md`.
+- This branding work is local and separate from the lockfile-only `4431aa4`
+  commit. No production credentials, paid model calls, cloud resources, or
+  backend schemas were changed.

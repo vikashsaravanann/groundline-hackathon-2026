@@ -3,6 +3,7 @@
 import { Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/design/Button";
+import { LogoMark } from "@/components/brand/Logo";
 import { EXAMPLE_OBJECTIVES, MAX_OBJECTIVE_CHARS } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import type { Studio } from "@/hooks/useStudio";
@@ -28,27 +29,30 @@ export function IntentComposer({ studio }: { studio: Studio }) {
         </p>
       </div>
 
-      <div className="relative">
-        <textarea
-          id="objective"
-          value={objective}
-          onChange={(e) => setObjective(e.target.value)}
-          maxLength={MAX_OBJECTIVE_CHARS + 50}
-          rows={3}
-          disabled={analyzing}
-          placeholder="Example: Find the model number and help me prepare a warranty registration."
-          className="w-full resize-none rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus-visible:border-blue-accent focus-visible:outline-none disabled:opacity-60"
-        />
-        {objective && !analyzing && (
-          <button
-            type="button"
-            aria-label="Clear objective"
-            onClick={() => setObjective("")}
-            className="absolute right-2 top-2 rounded-full p-1.5 text-muted hover:bg-cloud hover:text-ink"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+      <div className="flex items-center gap-2.5">
+        <LogoMark className="h-9 w-9" />
+        <div className="relative min-w-0 flex-1">
+          <textarea
+            id="objective"
+            value={objective}
+            onChange={(e) => setObjective(e.target.value)}
+            maxLength={MAX_OBJECTIVE_CHARS + 50}
+            rows={3}
+            disabled={analyzing}
+            placeholder="Example: Find the model number and help me prepare a warranty registration."
+            className="w-full resize-none rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus-visible:border-blue-accent focus-visible:outline-none disabled:opacity-60"
+          />
+          {objective && !analyzing && (
+            <button
+              type="button"
+              aria-label="Clear objective"
+              onClick={() => setObjective("")}
+              className="absolute right-2 top-2 rounded-full p-1.5 text-muted hover:bg-cloud hover:text-ink"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center justify-between">
