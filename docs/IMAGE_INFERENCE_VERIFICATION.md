@@ -25,10 +25,12 @@ when `status != "completed"` or `error` is non-null — a 200 with
 
 ## MOCK behaviour
 
-With no key or `GROUNDLINE_FORCE_MOCK=1`, the adapter serves
-`apps/api/fixtures/analyze_label.json` through the *same* parser and marks the
-result `mode="MOCK"`. The UI shows a prominent MOCK badge. A failed live call is
-never silently replaced by a fixture — it surfaces as an error.
+With no key or `GROUNDLINE_FORCE_MOCK=1`, the image fact-extraction adapter
+serves `apps/api/fixtures/muse_spark_image_response.json` through the same typed
+`output[]` parser and marks the result `mode="MOCK"`. The older
+`apps/api/fixtures/analyze_label.json` remains a text-oriented parser fixture.
+The UI shows a prominent MOCK badge. A failed live call is never silently
+replaced by a fixture — it surfaces as an error.
 
 ## Live verification run (one authorized call)
 
