@@ -20,9 +20,9 @@ const TONES: Record<Tone, string> = {
   success: "bg-[#e6f4ee] text-success border-transparent",
   warning: "bg-gold-light text-warning border-transparent",
   danger: "bg-[#fbe9ec] text-danger border-transparent",
-  // MOCK is deliberately the most eye-catching: a fixture must never be
-  // mistaken for a live model call (SECURITY.md rule 7).
-  mock: "bg-gold-accent text-white border-transparent",
+  // MOCK uses a distinctive violet-blue label so fixtures stay obvious and
+  // visually separate from both the gold caution state and green LIVE state.
+  mock: "bg-mock text-white border-transparent",
   live: "bg-success text-white border-transparent",
 };
 

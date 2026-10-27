@@ -56,16 +56,20 @@ export function Footer() {
             <p className="mt-3 max-w-md text-sm leading-relaxed text-ink-soft">
               Groundline helps people capture or upload a product label, describe what they want to know, and review the visible details before using them.
             </p>
-            <div className="mt-5 grid w-full gap-3 text-left">
-              <div className="rounded-2xl border border-line/60 bg-white/75 p-4">
+            <div className="mt-5 flex w-full flex-1 flex-col gap-3 text-left">
+              <div className="flex flex-1 flex-col justify-center rounded-2xl border border-line/60 bg-white/75 p-4">
                 <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">Start with your view</h3>
                 <p className="mt-2 text-sm leading-relaxed text-ink-soft">Choose a camera capture or an image you already have. Groundline waits for your permission and submission.</p>
               </div>
-              <div className="rounded-2xl border border-line/60 bg-white/75 p-4">
+              <div className="flex flex-1 flex-col justify-center rounded-2xl border border-line/60 bg-white/75 p-4">
                 <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">Give it a clear goal</h3>
                 <p className="mt-2 text-sm leading-relaxed text-ink-soft">A plain-language objective focuses the analysis on the information you need, such as a model number or warranty field.</p>
               </div>
-              <div className="rounded-2xl border border-line/60 bg-white/75 p-4">
+              <div className="flex flex-1 flex-col justify-center rounded-2xl border border-line/60 bg-white/75 p-4">
+                <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">Useful details to organize</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-soft">Ask about visible identifiers, model numbers, ratings, or warranty details. The image and your request determine what can be found.</p>
+              </div>
+              <div className="flex flex-1 flex-col justify-center rounded-2xl border border-line/60 bg-white/75 p-4">
                 <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">Keep the result reviewable</h3>
                 <p className="mt-2 text-sm leading-relaxed text-ink-soft">Check the source label, then correct or confirm visible facts before using them elsewhere. Groundline does not submit external forms or perform transactions.</p>
               </div>
@@ -80,18 +84,20 @@ export function Footer() {
               <FooterTile href="/how-it-works" label="How it works" icon={Route} />
               <FooterTile href="/studio" label="Open Studio" icon={Sparkles} />
             </div>
-            <div className="w-full rounded-2xl border border-line/60 bg-white/75 p-4 text-left">
-              <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">A useful way to explore</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">Read How It Works for the full five-stage concept, then open Studio to try the available capture, upload, objective, and review flow.</p>
-              <p className="mt-3 border-t border-line/60 pt-3 text-xs leading-relaxed text-muted">The homepage sample is static and does not use model credits. Analysis begins only after you submit from Studio.</p>
-            </div>
-            <div className="w-full rounded-2xl bg-purple-light/35 p-4 text-left">
-              <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">What to look for</h3>
-              <ul className="mt-2 space-y-2 text-sm leading-relaxed text-ink-soft">
-                <li>Does the typed goal make the requested information clear?</li>
-                <li>Can you tell whether a result is MOCK or LIVE?</li>
-                <li>Can you check and correct a field before relying on it?</li>
-              </ul>
+            <div className="mt-5 flex w-full flex-1 flex-col gap-3 text-left">
+              <div className="flex flex-1 flex-col justify-center rounded-2xl border border-line/60 bg-white/75 p-4">
+                <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">A useful way to explore</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-soft">Read How It Works for the full five-stage concept, then open Studio to try the available capture, upload, objective, and review flow.</p>
+                <p className="mt-3 border-t border-line/60 pt-3 text-xs leading-relaxed text-muted">The homepage sample is static and does not use model credits. Analysis begins only after you submit from Studio.</p>
+              </div>
+              <div className="flex flex-1 flex-col justify-center rounded-2xl bg-purple-light/35 p-4">
+                <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">What to look for</h3>
+                <ul className="mt-2 space-y-2 text-sm leading-relaxed text-ink-soft">
+                  <li>Does the typed goal make the requested information clear?</li>
+                  <li>Can you tell whether a result is MOCK or LIVE?</li>
+                  <li>Can you check and correct a field before relying on it?</li>
+                </ul>
+              </div>
             </div>
           </nav>
 
