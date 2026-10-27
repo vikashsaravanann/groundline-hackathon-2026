@@ -9,14 +9,16 @@ and an exposed `X-Correlation-ID` response header.
 
 ## Custom hostname
 
-No API custom domain has been added in Render and no DNS record has been changed.
-`api.groundline.logicintelligencetechnologies.in` is only a proposed hostname;
-the domain owner must confirm it and review Render's exact DNS instructions
-before records are changed. After DNS and TLS resolve, update the Vercel
-`NEXT_PUBLIC_API_BASE_URL` to the verified hostname and add the frontend's exact
-HTTPS origin to Render's `ALLOWED_ORIGINS`.
+The Render service settings now list
+`api.groundline.logicintelligencetechnologies.in`. DNS lookup resolves the
+hostname through `groundline-api-8wqb.onrender.com` to Render infrastructure.
+No DNS record was changed by this agent. An HTTPS health request from this
+environment reached the IP but the TLS handshake was reset, so custom-hostname
+HTTPS is not verified. The `.onrender.com` hostname remains the verified
+frontend API URL. After the custom hostname's TLS endpoint responds, update
+Vercel `NEXT_PUBLIC_API_BASE_URL` and verify the browser integration.
 
 The user-provided frontend domain `groundline.logicintelligencetechnologies.in`
 is attached to the existing Vercel project and Vercel reports a valid
-configuration. A direct HTTPS request from this environment reset its
-connection, so end-user access is not yet independently confirmed.
+configuration. A direct HTTPS request from this environment reset during the
+TLS handshake, so end-user access is not yet independently confirmed.

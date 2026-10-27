@@ -5,10 +5,10 @@
 | Name | Purpose | Status |
 |---|---|---|
 | `GROUNDLINE_FORCE_MOCK` | Forces fixture-backed inference even if a model key is later present | `1` in `render.yaml` |
-| `ALLOWED_ORIGINS` | Exact browser origins accepted by FastAPI CORS | Required at Blueprint sync; no value committed |
+| `ALLOWED_ORIGINS` | Exact browser origins accepted by FastAPI CORS | Configured in Render, not committed |
 | `PORT` | HTTP listen port | Supplied by Render; do not set manually |
 
-For initial CORS, use the actual Vercel production origin without a trailing slash or path. The frontend origin currently available from the existing project is `https://groundline-hackathon-2026.vercel.app`; confirm current project settings before entering it. Add another origin only when the exact domain is verified.
+At deployment, Render was configured with the exact origins `https://groundline.logicintelligencetechnologies.in`, `https://groundline-hackathon-2026-vikashsaravanan.vercel.app`, and `https://groundline-hackathon-2026-git-main-vikashsaravanan.vercel.app`. The custom production origin and the actual Vercel project alias both returned the matching `Access-Control-Allow-Origin`; JSON POST preflight was verified for the custom origin. No wildcard or path is used. The value is configured in Render and intentionally is not committed to the Blueprint.
 
 ## Not needed for initial MOCK service
 

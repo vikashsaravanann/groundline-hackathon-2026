@@ -9,8 +9,10 @@ Verification date: 2026-10-27
 - Deployment configuration commit: `ad9095e45b7f6d571ea2a3b51f61d5c4c6382e7f`
 - GitHub Frontend CI run `40488580864`: passed.
 - GitHub Backend CI run `40488580659`: passed.
-- The Render automatic `checksPass` path still needs a follow-up backend commit
-  and observed Render deployment; the initial deployment was a Blueprint sync.
+- GitHub Backend CI run `40489230845`: passed.
+- Vercel Frontend CI: https://github.com/vikashsaravanann/groundline-hackathon-2026/actions/runs/40488580864
+- The Render `checksPass` flow was observed: Backend CI passed on commit
+  `38bc4b3` before the matching Render deployment began.
 
 ## Render
 
@@ -23,6 +25,13 @@ Verification date: 2026-10-27
 - Health path: `/healthz`; deployment trigger setting: `checksPass`
 - Initial deployment: `dep-dbg7peuc6qcc73ek47sg`, commit `ad9095e`,
   trigger `blueprint_sync`, status live.
+- Automatic deployment: `dep-dbg7rjq9lscs73928fa0`, commit `38bc4b3`,
+  trigger `new_commit`, status live. It started after Backend CI run
+  `40489230845` succeeded.
+- CORS allowlist is set to the custom frontend hostname and the actual Vercel
+  project aliases. Approved-origin requests and JSON POST preflight were
+  verified. The final CORS environment update deploy
+  `dep-dbg7sinb9u1s73ch8s9g` completed with status live.
 - Endpoint: `https://groundline-api-8wqb.onrender.com`
 - `/healthz`: HTTP 200, JSON mode `MOCK`.
 - Synthetic `/api/analyze`: HTTP 200, three fixture facts, cost `$0.00`,
@@ -31,6 +40,10 @@ Verification date: 2026-10-27
   preflight. No wildcard is used.
 - Free service sleeps after inactivity; first requests may have a cold-start
   delay.
+- Render service settings list `api.groundline.logicintelligencetechnologies.in`.
+  DNS resolves through the Render service, but an HTTPS health request from
+  this environment reset during TLS negotiation. Custom-domain TLS remains
+  unverified.
 
 ## Vercel
 
@@ -42,10 +55,14 @@ Verification date: 2026-10-27
   Values are public URLs, not credentials.
 - The first automatic production build for `ad9095e` failed because the
   environment value present at that time was not an absolute URL. The values
-  have since been corrected. A successful next automatic build is pending.
-- The custom frontend domain is shown by Vercel as `Valid Configuration`, but
-  a direct HTTPS check from this environment reset its connection; public
-  access is not yet verified.
+  were corrected and the subsequent automatic production deployment for
+  `38bc4b3` is Ready: `https://groundline-hackathon-2026-q8psh9taf-vikashsaravanan.vercel.app`
+  (`dpl_3bUwWHG7z9KRGGwKoK5qy4AmpUJQ`).
+- Vercel assigned the user-provided domain
+  `groundline.logicintelligencetechnologies.in` to this production build and
+  reports Valid Configuration. Direct HTTPS from this environment reset at
+  TLS negotiation. Generated `vercel.app` deployment URLs redirect to Vercel
+  SSO, so public access via those URLs is protected.
 
 ## Supabase, Meta, DNS, and security
 
@@ -53,7 +70,9 @@ Verification date: 2026-10-27
   database operations are used by this deployment.
 - Render's public service is forced to MOCK mode. No Meta key is configured by
   the Blueprint and no paid inference was performed.
-- No DNS records were changed and no API custom domain was added.
+- No DNS records were changed by this agent. DNS lookups show the frontend
+  hostname resolving to Vercel DNS and the API hostname resolving through the
+  Render service.
 - No credential values were added to the repository or Docker image. The
   existing Vercel project includes legacy server-side Supabase environment
   variable names; frontend source does not read them. Their continued presence
