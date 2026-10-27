@@ -11,15 +11,13 @@ function FooterTile({
   label,
   icon: Icon,
   external = false,
-  compact = false,
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
   external?: boolean;
-  compact?: boolean;
 }) {
-  const className = `group flex ${compact ? "w-auto" : "w-full"} items-center justify-between gap-3 rounded-2xl border border-line/70 bg-white/75 px-3.5 py-3 text-left text-sm font-medium text-ink-soft shadow-[0_2px_10px_rgba(22,34,59,0.035)] transition duration-200 hover:-translate-y-0.5 hover:border-blue-accent/30 hover:bg-white hover:text-ink hover:shadow-[0_8px_20px_rgba(22,34,59,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent focus-visible:ring-offset-2`;
+  const className = "group flex w-full items-center justify-between gap-3 rounded-2xl border border-line/70 bg-white/75 px-3.5 py-3 text-left text-sm font-medium text-ink-soft shadow-[0_2px_10px_rgba(22,34,59,0.035)] transition duration-200 hover:-translate-y-0.5 hover:border-blue-accent/30 hover:bg-white hover:text-ink hover:shadow-[0_8px_20px_rgba(22,34,59,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent focus-visible:ring-offset-2";
   const content = (
     <>
       <span className="flex min-w-0 items-center gap-3">
@@ -58,11 +56,20 @@ export function Footer() {
             <p className="mt-3 max-w-md text-sm leading-relaxed text-ink-soft">
               Groundline helps people capture or upload a product label, describe what they want to know, and review the visible details before using them.
             </p>
-            <ul className="mt-5 flex flex-col items-center gap-2 text-sm text-ink-soft">
-              <li>Choose the image and the goal.</li>
-              <li>Inspect labelled analysis results.</li>
-              <li>Correct or confirm the extracted fields.</li>
-            </ul>
+            <div className="mt-5 grid w-full gap-3 text-left">
+              <div className="rounded-2xl border border-line/60 bg-white/75 p-4">
+                <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">Start with your view</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-soft">Choose a camera capture or an image you already have. Groundline waits for your permission and submission.</p>
+              </div>
+              <div className="rounded-2xl border border-line/60 bg-white/75 p-4">
+                <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">Give it a clear goal</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-soft">A plain-language objective focuses the analysis on the information you need, such as a model number or warranty field.</p>
+              </div>
+              <div className="rounded-2xl border border-line/60 bg-white/75 p-4">
+                <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">Keep the result reviewable</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-soft">Check the source label, then correct or confirm visible facts before using them elsewhere. Groundline does not submit external forms or perform transactions.</p>
+              </div>
+            </div>
           </section>
 
           <nav aria-label="Explore Groundline" className="flex h-full flex-col items-center gap-3 rounded-3xl border border-line/70 bg-gradient-to-br from-blue-light/45 via-white/80 to-pink-light/30 p-6 text-center text-sm">
@@ -73,6 +80,19 @@ export function Footer() {
               <FooterTile href="/how-it-works" label="How it works" icon={Route} />
               <FooterTile href="/studio" label="Open Studio" icon={Sparkles} />
             </div>
+            <div className="w-full rounded-2xl border border-line/60 bg-white/75 p-4 text-left">
+              <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">A useful way to explore</h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink-soft">Read How It Works for the full five-stage concept, then open Studio to try the available capture, upload, objective, and review flow.</p>
+              <p className="mt-3 border-t border-line/60 pt-3 text-xs leading-relaxed text-muted">The homepage sample is static and does not use model credits. Analysis begins only after you submit from Studio.</p>
+            </div>
+            <div className="w-full rounded-2xl bg-purple-light/35 p-4 text-left">
+              <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">What to look for</h3>
+              <ul className="mt-2 space-y-2 text-sm leading-relaxed text-ink-soft">
+                <li>Does the typed goal make the requested information clear?</li>
+                <li>Can you tell whether a result is MOCK or LIVE?</li>
+                <li>Can you check and correct a field before relying on it?</li>
+              </ul>
+            </div>
           </nav>
 
           <nav aria-label="Project information" className="flex h-full flex-col items-center gap-3 rounded-3xl border border-line/70 bg-gradient-to-br from-blue-light/45 via-white/80 to-pink-light/30 p-6 text-center text-sm">
@@ -82,6 +102,15 @@ export function Footer() {
               <FooterTile href="/features" label="Features" icon={Sparkles} />
               <FooterTile href="/about" label="About the creator" icon={BookOpen} />
               <FooterTile href={REPO} label="GitHub repository" icon={Github} external />
+              <FooterTile href="/legal/privacy-policy" label="Privacy Policy" icon={LockKeyhole} />
+              <FooterTile href="/legal/security" label="Security" icon={ShieldCheck} />
+              <FooterTile href="/legal/terms-and-conditions" label="Terms and Conditions" icon={FileText} />
+              <FooterTile href="/legal/cookies" label="Cookies" icon={FileText} />
+            </div>
+            <div className="mt-auto w-full rounded-2xl border border-line/60 bg-white/75 p-4 text-left">
+              <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">Project scope</h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink-soft">Groundline is an independent hackathon project exploring a human-guided path from physical product information to reviewable digital assistance.</p>
+              <p className="mt-3 border-t border-line/60 pt-3 text-xs leading-relaxed text-muted">Capture, upload, typed objectives, and field review are available. Visual grounding and action preparation remain planned.</p>
             </div>
           </nav>
 
@@ -128,12 +157,6 @@ export function Footer() {
           <p className="mx-auto max-w-5xl">Created by Vikash Saravanan, founder of Logic Intelligence Technologies; this is an individual hackathon entry, not a company submission.</p>
           <p className="mx-auto max-w-5xl">Not affiliated with, endorsed by, or sponsored by Meta Platforms or Cerebral Valley. Licensed under Apache-2.0 · 2026.</p>
         </div>
-        <nav aria-label="Legal policies" className="mt-6 flex flex-wrap justify-center gap-2">
-          <FooterTile href="/legal/terms-and-conditions" label="Terms and Conditions" icon={FileText} compact />
-          <FooterTile href="/legal/privacy-policy" label="Privacy Policy" icon={LockKeyhole} compact />
-          <FooterTile href="/legal/security" label="Security" icon={ShieldCheck} compact />
-          <FooterTile href="/legal/cookies" label="Cookies" icon={FileText} compact />
-        </nav>
       </div>
     </footer>
   );
