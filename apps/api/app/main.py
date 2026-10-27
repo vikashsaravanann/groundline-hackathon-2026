@@ -20,9 +20,8 @@ app = FastAPI(title="Groundline API", version="0.1.0")
 # user-supplied text. The objective's length is logged, not the objective.
 logger = logging.getLogger("groundline.analyze")
 
-# Running spend estimate from token counts, so cost is visible in the logs
-# without opening the billing page. Only live calls accumulate; MOCK calls cost
-# nothing and are logged with their notional fixture cost but not added here.
+# Running spend estimate from token counts. Only live calls have a request cost;
+# fixture token counts are descriptive and MOCK cost is always reported as zero.
 _cumulative_live_cost_usd = 0.0
 
 
@@ -218,7 +217,8 @@ def analyze(req: AnalyzeRequest, response: Response) -> AnalyzeResponse:
     fixture, "live" when it came from the model. No credential is ever returned.
 
     Every call is traced with a correlation ID (also returned as the
-    ``X-Correlation-ID`` header) and a cost estimate; see the module logger.
+    ``X-Correlation-ID`` header). MOCK fixture usage is not billable: its
+    reported cost is zero even though the fixture contains sample token counts.
     """
     global _cumulative_live_cost_usd
 
@@ -252,7 +252,7 @@ def analyze(req: AnalyzeRequest, response: Response) -> AnalyzeResponse:
         raise HTTPException(status_code=502, detail=f"model request failed: {exc}")
 
     elapsed_ms = int((time.monotonic() - started) * 1000)
-    request_cost = result.usage.estimated_cost_usd
+    request_cost = result.usage.estimated_cost_usd if result.mode == "live" else 0.0
     if result.mode == "live":
         _cumulative_live_cost_usd += request_cost
 
@@ -285,7 +285,7 @@ def analyze(req: AnalyzeRequest, response: Response) -> AnalyzeResponse:
             input_tokens=result.usage.input_tokens,
             output_tokens=result.usage.output_tokens,
             total_tokens=result.usage.total_tokens,
-            estimated_cost_usd=result.usage.estimated_cost_usd,
+            estimated_cost_usd=request_cost,
         ),
         elapsed_ms=result.elapsed_ms,
     )

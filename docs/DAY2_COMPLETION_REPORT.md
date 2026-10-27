@@ -53,3 +53,54 @@ server log scanned: 0 `Bearer`/`LLM_`/`MODEL_API_KEY=` hits. `.env*` gitignored.
   held for authorization).
 - Cross-browser + full-viewport sweep; real-device camera check.
 - Next milestone: SAM 3.1 grounding (see the completion report's handoff notes).
+
+## Publication and final verification addendum — 27 October 2026
+
+This dated addendum supersedes the earlier publication-pending statements above;
+the earlier entries remain as chronological evidence.
+
+- GitHub identity/repository verified through the connected GitHub read API:
+  `vikashsaravanann` / `vikashsaravanann/groundline-hackathon-2026`. Remote
+  `main` is `4431aa4388c0923e660990dd79fe9bb26a6be9db` (`4431aa4`). Local
+  branding work was based on `4431aa4` and is not pushed. No divergence or
+  history rewrite.
+- The separate lockfile correction `4431aa4` is published. Frontend CI run
+  [40478638492](https://github.com/vikashsaravanann/groundline-hackathon-2026/actions/runs/40478638492)
+  completed successfully on that commit; Backend CI run
+  [40478638474](https://github.com/vikashsaravanann/groundline-hackathon-2026/actions/runs/40478638474)
+  completed successfully. Branding assets are therefore not yet present on
+  GitHub.
+- Local branding commit `6406075` preserves the approved original artwork
+  byte-for-byte and adds the identity integration. Final local changes include
+  a small responsive Studio composer wrap correction and the MOCK cost reporting
+  correction. No production deployment or infrastructure change occurred.
+- Frontend: `npm ci` succeeded; lint passed; Vitest: 14 tests across 5 files;
+  TypeScript `npx tsc --noEmit` passed; production build passed and statically
+  generated `/`, `/studio`, icon, and manifest routes.
+- Backend: `python -m pytest -q` (using the project `.venv` because the bare
+  `python` command is unavailable) passed 40 tests; `pip check` reported no
+  broken requirements. One third-party Starlette/httpx deprecation warning
+  remains. MOCK responses, request-cost logs, and Studio estimated cost now
+  report $0; fixture token counts are descriptive only. No paid model calls
+  were made for this verification.
+- Chrome for Testing 156.0.8078.4: no horizontal overflow at 320, 375, 390,
+  430, 768, 1024, 1440, or 1920 CSS px. Mobile menu toggled; reduced-motion
+  preference, visible keyboard focus, Studio icon/input and objective-chip
+  spacing, typed upload and MOCK analysis passed. No page errors. Icon endpoints
+  returned HTTP 200 with `image/x-icon`, `image/png`, and
+  `application/manifest+json` content types. Updated visual evidence is in
+  `docs/brand-qa/`.
+- H02 remains **PARTIALLY VERIFIED**. No physical camera was detected in this
+  environment; real consent, preview, capture, stop/release and retake could
+  not be exercised. Automated tests and a simulated denial path verify the
+  interaction boundary and upload fallback, but do not replace a device test.
+- Firefox Nightly was present but could not start reliably (sandbox graphics
+  failure); the cached WebKit binary was incompatible with the installed
+  Playwright protocol. Native Safari and Firefox remain unverified. H09 remains
+  **PARTIALLY VERIFIED**. MOCK fixture badges remain explicit; typed input is
+  supported, while voice is explicitly deferred in `VOICE_DECISION.md`.
+- Branding publication is prepared as a fast-forward candidate, but requires
+  explicit authorization. The GitHub CLI credential is invalid in this
+  environment; read-only remote verification used the connected GitHub tool.
+  Search crawler/favicon appearance requires a public deployment and remains
+  externally unverified. No SAM or later milestone work was started.

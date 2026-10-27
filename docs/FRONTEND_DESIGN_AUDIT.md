@@ -75,3 +75,20 @@ animations (`useReducedMotion`) and CSS transitions; MOCK/LIVE conveyed by text
   not yet independently verified.
 - Camera requires a secure context (localhost in dev; HTTPS in production);
   permission-denied / no-camera / unsupported all fall back to image upload.
+
+## Final verification addendum — 27 October 2026
+
+The earlier Chrome-only and viewport follow-up notes above describe the
+verification state at that time. Final automated visual/interaction checks used
+Chrome for Testing 156.0.8078.4 on the current local build. Widths 320, 375,
+390, 430, 768, 1024, 1440, and 1920 had no horizontal overflow. The mobile
+menu opened and closed; reduced motion was enabled; keyboard focus remained
+visible. Studio logo and textarea did not overlap, and the objective chips no
+longer collide with the remaining-character count at 390px. Typed image upload
+and analysis completed in forced MOCK mode with no browser page errors.
+
+Safari/WebKit and Firefox are still unverified: cached Firefox Nightly failed
+at process startup in this environment, and cached WebKit did not speak the
+installed Playwright protocol. Native Safari was not exercised. H02 remains
+partially verified because there was no camera device available for live
+capture testing. Evidence screenshots are in `docs/brand-qa/`.

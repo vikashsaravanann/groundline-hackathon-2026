@@ -110,3 +110,19 @@ The original square composition is not used as a small favicon.
 - Screenshots for the landing page, menu, Studio composer, and icon sizes are in
   `docs/brand-qa/`. The app's camera-permission flow and live AI requests were
   not exercised in this visual pass; existing automated frontend tests passed.
+
+## Final verification addendum — 27 October 2026
+
+Chrome for Testing 156.0.8078.4 passed the final local production-build
+smoke-check at 320, 375, 390, 430, 768, 1024, 1440, and 1920 CSS px. The
+mobile menu toggled; reduced-motion and keyboard focus behavior were checked;
+Studio icon/input and example-chip/count spacing had no overlap. A typed image
+upload completed in forced MOCK mode. `/favicon.ico`, `/icon.png`,
+`/apple-icon.png`, and `/manifest.webmanifest` returned HTTP 200 with their
+expected content types. No browser page errors occurred. Current screenshots
+are listed in `docs/brand-qa/README.md`.
+
+Firefox Nightly startup and the cached WebKit/Playwright protocol failed in
+this environment; native Safari is unverified. No camera was detected, so H02
+remains partially verified. Branding remains local pending explicit push
+authorization. Public crawler and search-result appearance remain unverified.

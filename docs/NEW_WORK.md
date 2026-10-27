@@ -135,3 +135,17 @@ published). No history rewrite, no force-push, no cloud changes.
 - This branding work is local and separate from the lockfile-only `4431aa4`
   commit. No production credentials, paid model calls, cloud resources, or
   backend schemas were changed.
+
+## Day 2 publication and closeout — 27 October 2026
+
+- Verified remote `main` remains `4431aa4`. Its lockfile-only correction is
+  published; Frontend CI run 40478638492 and Backend CI run 40478638474 passed.
+- The approved-logo commit remains local and unpublished pending explicit
+  authorization. The GitHub CLI credential is invalid; connected GitHub
+  read-only access confirmed the remote identity, branch and workflow run.
+- Final smoke verification found and fixed a 390px Studio objective-chip/count
+  collision. MOCK API responses and trace request cost now report zero dollars;
+  fixture token counts are not billing data. No paid requests were made.
+- Voice remains deferred; typed input remains the supported intake. No SAM or
+  later-milestone work was started. Physical camera, native Safari, Firefox,
+  WebKit automation, and public search crawler appearance remain unverified.

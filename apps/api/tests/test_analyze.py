@@ -148,6 +148,7 @@ def test_analyze_mock_returns_structured_facts(monkeypatch):
     assert body["facts"] and all("confidence" in f for f in body["facts"])
     assert 0.0 <= body["overall_confidence"] <= 1.0
     assert body["objective_length"] == len(_valid_request()["objective"])
+    assert body["usage"]["estimated_cost_usd"] == 0.0
 
 
 def test_force_mock_makes_no_network_call(monkeypatch):
@@ -263,6 +264,7 @@ def test_trace_logs_length_not_objective_and_sets_correlation_id(monkeypatch, ca
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
     monkeypatch.setenv("GROUNDLINE_FORCE_MOCK", "1")
     secret_objective = "SECRET-OBJECTIVE-TEXT-must-not-be-logged-verbatim"
+    cumulative_before = main._cumulative_live_cost_usd
 
     with caplog.at_level(logging.INFO, logger="groundline.analyze"):
         r = client.post("/api/analyze", json=_valid_request(objective=secret_objective))
@@ -273,6 +275,8 @@ def test_trace_logs_length_not_objective_and_sets_correlation_id(monkeypatch, ca
     line = "\n".join(rec.getMessage() for rec in caplog.records)
     assert "analyze cid=" in line
     assert "mode=MOCK" in line
+    assert "req_cost_usd=0.000000" in line
+    assert f"cum_live_cost_usd={cumulative_before:.6f}" in line
     assert f"objective_len={len(secret_objective)}" in line
     # The objective text itself must never appear in a log line.
     assert secret_objective not in line

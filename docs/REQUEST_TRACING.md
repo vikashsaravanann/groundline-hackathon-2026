@@ -27,6 +27,11 @@ The emitted line carries: `cid`, `mode`, `model`, reasoning `effort`,
 `status=error`, `effort`, `objective_len`, `elapsed_ms`, and the exception
 **class** (never its message).
 
+For `mode=MOCK`, `req_cost_usd` is always `0.000000` and the response's
+`usage.estimated_cost_usd` is `0.0`. Fixture token counts are sample metadata;
+they are not a provider request or charge. Only a live result can have a
+non-zero request cost or increase `cum_live_cost_usd`.
+
 ## What is never logged
 
 The API key, the image bytes, the image data URL, any audio, and any
@@ -36,11 +41,10 @@ Verified: a secret scan of the live server log returned zero
 
 ## Cost accounting
 
-Cost is derived from the response's token counts at the recorded muse-spark-1.3
-pricing ($1.25 / $4.25 per M input/output). Only **live** calls accumulate into
-the running total; MOCK calls add nothing. When usage is absent the UI shows
-"—" rather than a fabricated price, and a MOCK result is never presented as
-having incurred a charge.
+Cost is estimated from **live** response token counts at the recorded
+muse-spark-1.3 pricing ($1.25 / $4.25 per M input/output). Only live calls
+accumulate into the running total. MOCK API responses, logs, and the Studio cost
+field report zero; their fixture token counts never imply a provider charge.
 
 ## Surfacing the line
 
@@ -52,6 +56,6 @@ The correlation id is always visible to the client via the response header.
 
 ## Sanitized trace examples
 
-- **MOCK success:** `cid=485fedab6076 mode=MOCK model=muse-spark-1.3 effort=minimal in_tok=132 out_tok=259 total_tok=391 status=completed objective_len=37 elapsed_ms=0 req_cost_usd=0.001266 cum_live_cost_usd=0.000000`
+- **MOCK success:** `cid=485fedab6076 mode=MOCK model=muse-spark-1.3 effort=minimal in_tok=132 out_tok=259 total_tok=391 status=completed objective_len=37 elapsed_ms=0 req_cost_usd=0.000000 cum_live_cost_usd=0.000000` (fixture tokens are descriptive only)
 - **LIVE success:** correlation id `fcab5c7e-1bb`, source meta-live, 691 tokens, ~$0.00156, status completed (27 Oct 2026 verification run).
 - **Validation failure:** HTTP 422 from the pydantic validators (empty/oversized objective, bad MIME, oversized/invalid image); no model call is made.

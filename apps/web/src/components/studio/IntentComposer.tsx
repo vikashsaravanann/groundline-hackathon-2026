@@ -55,8 +55,8 @@ export function IntentComposer({ studio }: { studio: Studio }) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex flex-wrap gap-1.5">
+      <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap gap-1.5">
           {EXAMPLE_OBJECTIVES.map((ex) => (
             <button
               key={ex}
@@ -69,7 +69,7 @@ export function IntentComposer({ studio }: { studio: Studio }) {
             </button>
           ))}
         </div>
-        <span className={cn("text-xs", over ? "text-danger" : "text-muted")}>{remaining}</span>
+        <span className={cn("shrink-0 self-end text-xs sm:self-auto", over ? "text-danger" : "text-muted")}>{remaining}</span>
       </div>
 
       <div className="flex items-center gap-2">
