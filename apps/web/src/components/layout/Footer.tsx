@@ -9,32 +9,39 @@ export function Footer() {
   return (
     <footer className="mt-24 border-t border-line/70 bg-white/60 px-5 py-14 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-[1800px]">
-        <div className="grid gap-10 md:grid-cols-2 xl:grid-cols-[1.2fr_0.75fr_0.9fr_1.25fr] xl:gap-14">
-          <div className="flex flex-col items-start gap-4">
+        <div className="grid items-stretch gap-6 md:grid-cols-2 xl:grid-cols-[1.2fr_0.75fr_0.9fr_1.25fr] xl:gap-8">
+          <section className="flex h-full flex-col items-center rounded-3xl border border-line/70 bg-gradient-to-br from-blue-light/45 via-white/80 to-pink-light/30 p-6 text-center">
             <Wordmark />
-            <p className="max-w-sm text-sm leading-relaxed text-ink-soft">
-              From what you see to what gets done — with your approval. A human-guided
-              visual AI co-pilot for turning chosen images into information you can review.
+            <h2 className="mt-5 text-lg font-bold text-ink">A clearer path from image to useful information</h2>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-ink-soft">
+              Groundline helps people capture or upload a product label, describe what they want to know, and review the visible details before using them.
             </p>
-          </div>
+            <ul className="mt-5 flex flex-col items-center gap-2 text-sm text-ink-soft">
+              <li>Choose the image and the goal.</li>
+              <li>Inspect labelled analysis results.</li>
+              <li>Correct or confirm the extracted fields.</li>
+            </ul>
+          </section>
 
-          <nav aria-label="Explore Groundline" className="flex flex-col items-start gap-3 text-sm">
+          <nav aria-label="Explore Groundline" className="flex h-full flex-col items-center gap-3 rounded-3xl border border-line/70 bg-gradient-to-br from-blue-light/45 via-white/80 to-pink-light/30 p-6 text-center text-sm">
             <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-ink">Explore</h2>
-            <Link href="/" className="text-ink-soft transition hover:text-ink">Home</Link>
-            <Link href="/workflow" className="text-ink-soft transition hover:text-ink">How it works</Link>
-            <Link href="/studio" className="text-ink-soft transition hover:text-ink">Open Studio</Link>
+            <p className="mb-1 text-sm leading-relaxed text-ink-soft">Find your way around Groundline.</p>
+            <Link href="/" className="w-full rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink">Home</Link>
+            <Link href="/workflow" className="w-full rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink">How it works</Link>
+            <Link href="/studio" className="w-full rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink">Open Studio</Link>
           </nav>
 
-          <nav aria-label="Project information" className="flex flex-col items-start gap-3 text-sm">
+          <nav aria-label="Project information" className="flex h-full flex-col items-center gap-3 rounded-3xl border border-line/70 bg-gradient-to-br from-blue-light/45 via-white/80 to-pink-light/30 p-6 text-center text-sm">
             <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-ink">Project</h2>
-            <Link href="/#features" className="text-ink-soft transition hover:text-ink">Features</Link>
-            <Link href="/about" className="text-ink-soft transition hover:text-ink">About the creator</Link>
-            <Link href="/#safety" className="text-ink-soft transition hover:text-ink">Safety</Link>
+            <p className="mb-1 text-sm leading-relaxed text-ink-soft">Learn about the project and its scope.</p>
+            <Link href="/#features" className="w-full rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink">Features</Link>
+            <Link href="/about" className="w-full rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink">About the creator</Link>
+            <Link href="/#safety" className="w-full rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink">Safety</Link>
             <a
               href={REPO}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-ink-soft transition hover:text-ink"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink"
             >
               <Github className="h-4 w-4" /> GitHub repository
             </a>
@@ -53,11 +60,10 @@ export function Footer() {
           </section>
         </div>
 
-        <div className="mt-12 flex flex-col gap-3 border-t border-line/70 pt-6 text-xs leading-relaxed text-muted sm:flex-row sm:items-start sm:justify-between">
-          <p className="max-w-4xl">
-            Independent submission to the Meta Global AI Developer Hackathon 2026 — Indie Developer track. Built by Vikash Saravanan, founder of Logic Intelligence Technologies; this is an individual entry, not a company submission. It is not affiliated with, endorsed by, or sponsored by Meta Platforms or Cerebral Valley.
-          </p>
-          <p className="shrink-0 sm:text-right">Apache-2.0 · 2026</p>
+        <div className="mt-10 flex flex-col items-center gap-2 border-t border-line/70 pt-6 text-center text-xs leading-relaxed text-muted">
+          <p className="mx-auto max-w-5xl">Independent Indie Developer submission to the Meta Global AI Developer Hackathon 2026.</p>
+          <p className="mx-auto max-w-5xl">Created by Vikash Saravanan, founder of Logic Intelligence Technologies; this is an individual hackathon entry, not a company submission.</p>
+          <p className="mx-auto max-w-5xl">Not affiliated with, endorsed by, or sponsored by Meta Platforms or Cerebral Valley. Licensed under Apache-2.0 · 2026.</p>
         </div>
       </div>
     </footer>

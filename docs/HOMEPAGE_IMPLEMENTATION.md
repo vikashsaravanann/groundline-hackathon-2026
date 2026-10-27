@@ -14,6 +14,11 @@ verified identity and project facts from `apps/web/src/content/creator.ts`;
 optional biography, education, achievement, portrait, and social-link fields
 are omitted until the creator supplies them.
 
+The footer uses a wide responsive four-panel layout for brand, Explore, Project,
+and judges/collaborators information. Its three closing disclosure lines are
+centered beneath the divider. The hero preview keeps the sample label frame
+blank at the creator's request; sample result cards remain explicitly MOCK.
+
 All sample homepage content is static and marked SAMPLE / MOCK. Loading the
 homepage does not call a model. The public API is currently forced to MOCK
 while server-side access and durable usage controls are incomplete.
