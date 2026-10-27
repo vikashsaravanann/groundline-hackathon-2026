@@ -1,0 +1,59 @@
+{
+  "top_logprobs": 0,
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "service_tier": "auto",
+  "model": "muse-spark-1.3",
+  "reasoning": {
+    "effort": "minimal"
+  },
+  "background": false,
+  "tools": [],
+  "tool_choice": "auto",
+  "truncation": "disabled",
+  "id": "resp_6ae050b2cd353bba8aff461e",
+  "object": "response",
+  "status": "completed",
+  "created_at": 1793085618.0,
+  "completed_at": 1793085618.0,
+  "error": null,
+  "incomplete_details": null,
+  "output": [
+    {
+      "type": "reasoning",
+      "id": "rs_6ae050b2cd353bba8aff461e:rs_4edb00f2-a886-44b1-8fe9-8c862356c7c8",
+      "encrypted_content": "Q-PaDgEeGH2cy2y5fb69iVyiWMFty8e1uoTBrlFF1qI81wOq6ZtEyYIuH8MVEWsF6BVQhXkiKMurur2sV1trkjmM9ddEFucQlG9K-Id_isZKLrcWp_LCQepbx5n2FTU666I9jkA6DlBJSqze0w8DVPvPLfoQxvUopMN9ULeWj3vb719k31nyDb6wosd0OxLVMIqOURphF6q-Jz_xG3hsntnfyAivFFj9GPWnGuyoADxutwUWRtPAgkBajrhwSmNA8pSLxWNwIGlBiyACmA0pv51K8PiaPTT_6Ent9jFa1e3mT5bVlNMpQhzC3EkVc7ad6R0MRZWAAROoifO6GZsINiC3cvBAjsYfJAjplndp_zqhDu7xAyJLs_VwgFZbtFExne_Zo5thhKi0hN9zPS06PFfYS6ZOaH2GdF5eCzuDM7KAz3JiLjLQ2Y9q1tEniFW2AYqYQIUVOrl8b_-NWqUtZ0kLJZGVeIWgoYOqOrCjTvkMXYBdEcu71iWz3UmUQVMMPa-JXwApXacJdYA2ankLgnN1eT5olbhDvePKMSyOCgth3KUn9KQgOHAWIJsN2DScBxzj2AVPP2BwYRDY87d4nor8w61y1Q3dllXLo90ky6DRLQs3FSB_QWLV-OVQg1m87WXPEMcnGZTkGtp15JSVNY4EDpcTBSGXzc5KYsREudDyys3sXOqVKaoDNk1hjKcJ_3bK1dzdT00hu_6HMjHTqckOoW2jRy6T_bAYFsuK_IyGETvkSn56_QDk5YDgE1YOyWe32mdeJUE1tYJUKA1TGXMEAiXicPOhZpkhGW9ILuECzMT3vmH9YQ1g2JatQIWqbRUeEXlXSENoBlZ-WS3_Jl682NKQ9V3F4MJEWZWtmVxtKzVdPtLuuYJBPpD4NvshPIe3ztTRlZR25_dtZHzv7onmNLLH4ZZGmAlVgDzUPLF53AkdqsZRLw8axZypP275u9g4-DO7R0-JJRyygagYkm4npOz8k9k4MPF7O5148HV8zMvkoTNa8Sdy1kUOaQSeu_cJE3WWjHNV-gRPbZw7ZYQOJfmo8IJhHspyAW3-0T3jqc3qVDKuA0x-I0RW2D10AZ6CA6mx6jsAAoGQqjtAsLhtn36y1JaYVEvXBRTHq3kdMvN5yiFiI7PVUgcpUHdzQMhpuh9y0UqpfPdDcgUaYkP0sUmeoUMngeM-rK-Jl-9VIQOlej4GDI2kkm9C2FDsm4qb-8JHfHpGb4fTMML0x_84yRWDXkBqtV_uC0pL0vPiEYZJDMyAcJAowhyS0BlDF2cXLjQ6oO0AuPN7yNFl1q2NfdgFjzxUjwvz4PGVy7xGC0T9mfPen7W30ywWvmA9zRY0peG-jgn9ihb085uadnTESe9yVyrPKgXJ62MwvdND3gc5Q4Z-ZlC7Ps_2ECplnB3svLfo7r0HGBOCBw",
+      "summary": [],
+      "status": "completed"
+    },
+    {
+      "type": "message",
+      "id": "msg_0c9b8daa-7e62-47ca-836d-e17c8947145f",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "{\"facts\":[{\"label\":\"product_name\",\"value\":\"ACME Oat Drink Barista\",\"confidence\":1},{\"label\":\"size\",\"value\":\"1 L\",\"confidence\":1},{\"label\":\"best-before date\",\"value\":\"2027-02-14\",\"confidence\":1}],\"overall_confidence\":1}",
+          "annotations": [],
+          "logprobs": []
+        }
+      ],
+      "status": "completed"
+    }
+  ],
+  "instructions": null,
+  "usage": {
+    "input_tokens": 132,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 259,
+    "output_tokens_details": {
+      "reasoning_tokens": 189
+    },
+    "total_tokens": 391
+  },
+  "parallel_tool_calls": true,
+  "store": false,
+  "max_output_tokens": 400
+}

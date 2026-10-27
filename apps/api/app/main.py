@@ -1,8 +1,13 @@
+import base64
+import binascii
+import json
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app import meta_client
 
 app = FastAPI(title="Groundline API", version="0.1.0")
 
@@ -60,3 +65,168 @@ def healthz() -> HealthResponse:
     """
     mode = "live" if os.environ.get("MODEL_API_KEY") else "MOCK"
     return HealthResponse(status="ok", version=app.version, mode=mode)
+
+
+# --- /api/analyze -----------------------------------------------------------
+
+# The byte ceiling the frontend (apps/web) must also enforce before upload.
+MAX_IMAGE_BYTES = 4 * 1024 * 1024
+MAX_OBJECTIVE_CHARS = 500
+ALLOWED_IMAGE_MIME = ("image/png", "image/jpeg", "image/webp")
+
+
+def _decode_image_payload(value: str) -> bytes:
+    """Decode a base64 image body, tolerating an optional data-URL prefix."""
+    payload = value.split(",", 1)[1] if value.startswith("data:") else value
+    return base64.b64decode(payload, validate=True)
+
+
+class AnalyzeRequest(BaseModel):
+    """A bounded analyze request. Every rejection carries a human-readable
+    message; nothing here reaches a model until it validates."""
+
+    objective: str
+    mime_type: str
+    image_base64: str
+
+    @field_validator("objective")
+    @classmethod
+    def _check_objective(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("objective must not be empty")
+        if len(value) > MAX_OBJECTIVE_CHARS:
+            raise ValueError(
+                f"objective must be at most {MAX_OBJECTIVE_CHARS} characters "
+                f"(got {len(value)})"
+            )
+        return value
+
+    @field_validator("mime_type")
+    @classmethod
+    def _check_mime(cls, value: str) -> str:
+        if value not in ALLOWED_IMAGE_MIME:
+            raise ValueError(
+                f"unsupported image type {value!r}; "
+                f"allowed types are {', '.join(ALLOWED_IMAGE_MIME)}"
+            )
+        return value
+
+    @field_validator("image_base64")
+    @classmethod
+    def _check_image(cls, value: str) -> str:
+        try:
+            raw = _decode_image_payload(value)
+        except (binascii.Error, ValueError):
+            raise ValueError("image_base64 is not valid base64 image data")
+        if not raw:
+            raise ValueError("image must not be empty")
+        if len(raw) > MAX_IMAGE_BYTES:
+            raise ValueError(
+                f"image is {len(raw)} bytes, over the {MAX_IMAGE_BYTES} byte ceiling"
+            )
+        return value
+
+
+class Fact(BaseModel):
+    label: str
+    value: str
+    confidence: float
+
+
+class UsageModel(BaseModel):
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    estimated_cost_usd: float
+
+
+class AnalyzeResponse(BaseModel):
+    mode: str
+    model: str
+    objective_length: int
+    facts: list[Fact]
+    overall_confidence: float
+    usage: UsageModel
+    elapsed_ms: int
+
+
+def _clamp(value: object, default: float = 0.0) -> float:
+    try:
+        return min(1.0, max(0.0, float(value)))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
+def _facts_from_text(text: str) -> tuple[list[Fact], float]:
+    """Turn the model's JSON text into structured facts.
+
+    If the model did not return the agreed JSON, its raw text is surfaced as a
+    single zero-confidence fact rather than inventing structure.
+    """
+    try:
+        data = json.loads(text)
+    except (json.JSONDecodeError, TypeError):
+        data = None
+
+    facts: list[Fact] = []
+    if isinstance(data, dict) and isinstance(data.get("facts"), list):
+        for item in data["facts"]:
+            if not isinstance(item, dict):
+                continue
+            label = str(item.get("label", "")).strip()
+            value = str(item.get("value", "")).strip()
+            if not (label or value):
+                continue
+            facts.append(
+                Fact(
+                    label=label or "fact",
+                    value=value,
+                    confidence=_clamp(item.get("confidence", 0.0)),
+                )
+            )
+
+    if not facts:
+        snippet = (text or "").strip()[:MAX_OBJECTIVE_CHARS]
+        return [Fact(label="raw_model_output", value=snippet, confidence=0.0)], 0.0
+
+    if isinstance(data, dict) and "overall_confidence" in data:
+        overall = _clamp(data["overall_confidence"])
+    else:
+        overall = round(sum(f.confidence for f in facts) / len(facts), 3)
+    return facts, overall
+
+
+@app.post("/api/analyze", response_model=AnalyzeResponse)
+def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
+    """Ground the visible facts in a single still image against an objective.
+
+    The response always carries ``mode`` (rule 7): "MOCK" when served from a
+    fixture, "live" when it came from the model. No credential is ever returned.
+    """
+    data_url = (
+        req.image_base64
+        if req.image_base64.startswith("data:")
+        else f"data:{req.mime_type};base64,{req.image_base64}"
+    )
+    model_input = meta_client.build_image_input(data_url, req.objective)
+    try:
+        result = meta_client.call_model(input=model_input)
+    except meta_client.MetaClientError as exc:
+        # exc messages never contain the key (enforced in meta_client).
+        raise HTTPException(status_code=502, detail=f"model request failed: {exc}")
+
+    facts, overall = _facts_from_text(result.text)
+    return AnalyzeResponse(
+        mode=result.mode,
+        model=result.model,
+        objective_length=len(req.objective),
+        facts=facts,
+        overall_confidence=overall,
+        usage=UsageModel(
+            input_tokens=result.usage.input_tokens,
+            output_tokens=result.usage.output_tokens,
+            total_tokens=result.usage.total_tokens,
+            estimated_cost_usd=result.usage.estimated_cost_usd,
+        ),
+        elapsed_ms=result.elapsed_ms,
+    )
