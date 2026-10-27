@@ -38,9 +38,9 @@ published). Not pushed. No history rewrite.
 
 ## Model usage (authorized)
 
-Two authorized live calls total this project: text-path fixture (~$0.0013,
-391 tok) + image verification (~$0.00156, 691 tok) ≈ **$0.0028**. No retries,
-no decorative calls, none in tests or CI.
+At the time of this report, two authorized live calls had been made in this
+project: text-path fixture (~$0.0013, 391 tok) + image verification (~$0.00156,
+691 tok) ≈ **$0.0028**. No retries, no decorative calls, none in tests or CI.
 
 ## Security
 

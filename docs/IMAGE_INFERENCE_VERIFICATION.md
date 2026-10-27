@@ -45,8 +45,9 @@ never silently replaced by a fixture — it surfaces as an error.
 - No credential appeared in any log, response body, or header (verified:
   `grep -cE 'Bearer|LLM_|MODEL_API_KEY='` over the server log → 0).
 
-Authorized model spend this session: text-path fixture call (~$0.0013, 391 tok)
-+ this image call (~$0.00156, 691 tok) ≈ **$0.0028 total**. No retries were made.
+At the time of this initial report, authorized model spend was the text-path
+fixture call (~$0.0013, 391 tok) plus this image call (~$0.00156, 691 tok), or
+about **$0.0028**. No retries were made.
 
 ## Confidence policy
 
@@ -59,7 +60,8 @@ numbers or evidence references are fabricated.
 
 - Per-field *evidence references* and on-image *grounding* are not yet produced
   (planned milestone); `evidence` is `null` today.
-- Only one live call was made (cost discipline); broader accuracy across many
+- The initial verification covered one image call; the later single-attempt
+  fixture capture below adds one more synthetic label. Accuracy across many
   label types is not yet characterised.
 
 ## Additional multimodal fixture capture — 27 Oct 2026
