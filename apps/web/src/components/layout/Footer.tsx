@@ -85,16 +85,41 @@ export function Footer() {
             </div>
           </nav>
 
-          <section aria-labelledby="reviewer-info" className="rounded-3xl border border-line/70 bg-gradient-to-br from-blue-light/45 via-white/80 to-pink-light/30 p-6">
+          <section aria-labelledby="reviewer-info" className="flex h-full flex-col rounded-3xl border border-line/70 bg-gradient-to-br from-blue-light/45 via-white/80 to-pink-light/30 p-6">
             <h2 id="reviewer-info" className="text-xs font-bold uppercase tracking-[0.16em] text-ink">
               For judges and collaborators
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-              Review the current scope: camera or image upload, a typed goal, labelled image-analysis output, and human review. The Ground, Prepare, and approval-timeline stages are marked planned.
+              Groundline turns a user-selected product image and a plain-language goal into visible information the person can inspect. The person stays in control of capture, submission, and what to do with the result.
             </p>
-            <p className="mt-3 text-xs leading-relaxed text-muted">
-              The homepage sample is synthetic and marked SAMPLE · MOCK; it does not call a model or represent a live result.
+
+            <div className="mt-5 rounded-2xl border border-line/70 bg-white/75 p-4">
+              <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">A quick review path</h3>
+              <ol className="mt-3 space-y-2.5 text-sm leading-relaxed text-ink-soft">
+                <li className="flex gap-3"><span className="font-mono text-purple-accent">01</span><span>Open Studio and capture or upload a synthetic product label.</span></li>
+                <li className="flex gap-3"><span className="font-mono text-purple-accent">02</span><span>Describe a specific goal, such as reading the model number.</span></li>
+                <li className="flex gap-3"><span className="font-mono text-purple-accent">03</span><span>Submit, inspect the source label, then review or correct each field.</span></li>
+              </ol>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-blue-light/45 p-4">
+                <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">Available today</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-soft">Explicit camera capture, image upload, typed objectives, labelled analysis output, and field review.</p>
+              </div>
+              <div className="rounded-2xl bg-purple-light/45 p-4">
+                <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-navy">Planned next</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-soft">Visual region grounding, task preparation, and a fuller approval timeline are not implemented yet.</p>
+              </div>
+            </div>
+
+            <p className="mt-4 text-xs leading-relaxed text-muted">
+              The homepage example is synthetic and marked SAMPLE · MOCK. The public API is also forced to MOCK; these labels never represent a live model result.
             </p>
+            <div className="mt-auto flex flex-wrap gap-2 pt-5">
+              <Link href="/studio" className="rounded-full bg-navy px-4 py-2 text-xs font-semibold text-white transition hover:bg-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent focus-visible:ring-offset-2">Try the Studio</Link>
+              <Link href="/how-it-works" className="rounded-full border border-line bg-white/80 px-4 py-2 text-xs font-semibold text-navy transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent focus-visible:ring-offset-2">Read the workflow</Link>
+            </div>
           </section>
         </div>
 
