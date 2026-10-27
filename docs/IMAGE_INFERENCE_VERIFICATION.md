@@ -61,3 +61,42 @@ numbers or evidence references are fabricated.
   (planned milestone); `evidence` is `null` today.
 - Only one live call was made (cost discipline); broader accuracy across many
   label types is not yet characterised.
+
+## Additional multimodal fixture capture — 27 Oct 2026
+
+One explicitly authorized, single-attempt live request was sent directly to
+Meta using a synthetic PNG label. No retry was made. The response is preserved
+verbatim in `apps/api/fixtures/analyze_label_image_meta_live.json`; the source
+image is `apps/api/fixtures/synthetic_product_label.png` (SHA-256
+`34a031a10d9910ea89141015600be473f3cb33933687e6e5cedc2934a202cbc4`).
+
+- HTTP status: **200**; response status: `completed`.
+- The model read the visible company, product type, model, input voltage and
+  synthetic serial correctly: `NORTHSTAR LABS`, `DESK LAMP`, `NSL-2048`,
+  `12 V DC`, and `SYNTH-0001`.
+- Usage: **1,314 input**, **395 output**, **1,709 total tokens**.
+- Cost: the API response reports token usage but no charge. Applying this
+  adapter's recorded rates (`$1.25/M` input and `$4.25/M` output) gives an
+  estimated **$0.00332125**; this is not an invoice measurement.
+- Effort: `low`; `store: false`; maximum output: `512`.
+- Exact request shape:
+
+  ```json
+  {
+    "model": "muse-spark-1.3",
+    "input": [{
+      "role": "user",
+      "content": [
+        {"type": "input_text", "text": "<label extraction instruction with objective>"},
+        {"type": "input_image", "image_url": "data:image/png;base64,<synthetic PNG bytes>"}
+      ]
+    }],
+    "reasoning": {"effort": "low"},
+    "store": false,
+    "max_output_tokens": 512
+  }
+  ```
+
+The offline test loads that raw response and passes it through the same
+`parse_response` typed `output[]` parser as the text response fixture. No more
+live model calls are part of this verification.

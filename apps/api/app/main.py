@@ -250,10 +250,13 @@ def analyze(req: AnalyzeRequest, response: Response) -> AnalyzeResponse:
         if req.image_base64.startswith("data:")
         else f"data:{req.mime_type};base64,{req.image_base64}"
     )
-    model_input = meta_client.build_image_input(data_url, req.objective)
-
     try:
-        result = meta_client.call_model(input=model_input, effort=effort)
+        result = meta_client.call_model(
+            capability=meta_client.Capability.IMAGE_UNDERSTANDING,
+            image_data_url=data_url,
+            objective=req.objective,
+            effort=effort,
+        )
     except meta_client.MetaClientError as exc:
         elapsed_ms = int((time.monotonic() - started) * 1000)
         # Log the exception type only — never the message, image, or objective.

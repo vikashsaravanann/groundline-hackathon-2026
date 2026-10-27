@@ -54,6 +54,55 @@ def test_parser_reads_recorded_fixture():
     assert result.usage.estimated_cost_usd > 0
 
 
+def test_parser_reads_recorded_multimodal_image_fixture():
+    # This is the full recorded Muse Responses envelope from the synthetic
+    # image request. Keep it on the same typed-output parser as the text fixture.
+    body = meta_client._load_fixture("analyze_label_image_meta_live.json")
+    result = meta_client.parse_response(body, elapsed_ms=0, mode="MOCK")
+    assert result.status == "completed"
+    assert result.model == "muse-spark-1.3"
+    assert body["reasoning"]["effort"] == "low"
+    assert body["store"] is False
+    assert '"value":"NSL-2048"' in result.text
+    assert result.usage.input_tokens == 1314
+    assert result.usage.output_tokens == 395
+    assert result.usage.total_tokens == 1709
+
+
+def test_baseten_fixture_uses_common_capability_response_contract(monkeypatch):
+    monkeypatch.setenv("GROUNDLINE_IMAGE_UNDERSTANDING_PROVIDER", "baseten")
+    monkeypatch.delenv("GROUNDLINE_FORCE_MOCK", raising=False)
+    monkeypatch.delenv("BASETEN_API_KEY", raising=False)
+    result = meta_client.call_model(
+        capability=meta_client.Capability.IMAGE_UNDERSTANDING,
+        image_data_url="data:image/png;base64,c3ludGhldGlj",
+        objective="Read the product details.",
+    )
+    assert result.mode == "MOCK"
+    assert result.model == "meta-models/muse-spark-open-1026"
+    assert '"value":"NSL-2048"' in result.text
+    assert result.usage.input_tokens == 846
+    assert result.usage.output_tokens == 115
+
+
+def test_baseten_force_mock_never_calls_network_even_with_key(monkeypatch):
+    monkeypatch.setenv("GROUNDLINE_IMAGE_UNDERSTANDING_PROVIDER", "baseten")
+    monkeypatch.setenv("GROUNDLINE_FORCE_MOCK", "1")
+    monkeypatch.setenv("BASETEN_API_KEY", SENTINEL_KEY)
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("Baseten network client constructed while FORCE_MOCK is set")
+
+    monkeypatch.setattr(meta_client.httpx, "Client", _boom)
+    result = meta_client.call_model(
+        capability=meta_client.Capability.IMAGE_UNDERSTANDING,
+        image_data_url="data:image/png;base64,c3ludGhldGlj",
+        objective="Read the product details.",
+    )
+    assert result.mode == "MOCK"
+    assert result.model == "meta-models/muse-spark-open-1026"
+
+
 def test_parser_skips_reasoning_item():
     # Construct an envelope whose reasoning item carries text; it must be
     # ignored in favour of the message item.
@@ -90,7 +139,12 @@ def test_completed_but_empty_text_raises():
 
 def test_bad_effort_rejected_before_any_call():
     with pytest.raises(ValueError):
-        meta_client.call_model(input="x", effort="turbo")
+        meta_client.call_model(
+            capability=meta_client.Capability.IMAGE_UNDERSTANDING,
+            image_data_url="data:image/png;base64,c3ludGhldGlj",
+            objective="Read this label.",
+            effort="turbo",
+        )
 
 
 # --- validation (four rejections) -------------------------------------------
@@ -190,7 +244,8 @@ class _FakeClient:
     captured: dict = {}
 
     def __init__(self, *args, **kwargs):
-        pass
+        self.args = args
+        self.kwargs = kwargs
 
     def __enter__(self):
         return self
@@ -199,7 +254,10 @@ class _FakeClient:
         return False
 
     def post(self, path, json=None, headers=None):
-        _FakeClient.captured = {"path": path, "json": json, "headers": headers}
+        _FakeClient.captured = {
+            "path": path, "json": json, "headers": headers,
+            "base_url": self.kwargs.get("base_url"),
+        }
         return _FakeResponse(200, meta_client._load_fixture(meta_client.DEFAULT_FIXTURE))
 
 
@@ -223,8 +281,49 @@ def test_live_path_never_leaks_key_and_pins_cost_controls(monkeypatch):
     assert sent["store"] is False
     assert sent["reasoning"]["effort"] == meta_client.DEFAULT_EFFORT
     assert sent["model"] == meta_client.MODEL_ID
+    assert sent["max_output_tokens"] == meta_client.DEFAULT_MAX_OUTPUT_TOKENS
+    assert sent["input"][0]["role"] == "user"
+    assert [part["type"] for part in sent["input"][0]["content"]] == [
+        "input_text", "input_image"
+    ]
+    assert sent["input"][0]["content"][1]["image_url"].startswith("data:image/png;base64,")
     # The key is sent upstream as a Bearer token (but never returned above).
     assert _FakeClient.captured["headers"]["Authorization"] == f"Bearer {SENTINEL_KEY}"
+
+
+def test_baseten_live_adapter_shape_is_offline_only(monkeypatch):
+    monkeypatch.setenv("BASETEN_API_KEY", SENTINEL_KEY)
+    monkeypatch.setenv("GROUNDLINE_IMAGE_UNDERSTANDING_PROVIDER", "baseten")
+    monkeypatch.delenv("GROUNDLINE_FORCE_MOCK", raising=False)
+
+    class _BasetenFakeClient(_FakeClient):
+        def post(self, path, json=None, headers=None):
+            _FakeClient.captured = {
+                "path": path, "json": json, "headers": headers,
+                "base_url": self.kwargs.get("base_url"),
+            }
+            return _FakeResponse(200, meta_client._load_fixture(meta_client.BASETEN_FIXTURE))
+
+    monkeypatch.setattr(meta_client.httpx, "Client", _BasetenFakeClient)
+    result = meta_client.call_model(
+        capability=meta_client.Capability.IMAGE_UNDERSTANDING,
+        image_data_url="data:image/png;base64,c3ludGhldGlj",
+        objective="Read the product details.",
+    )
+    assert result.mode == "live"
+    assert result.model == "meta-models/muse-spark-open-1026"
+    captured = _FakeClient.captured
+    assert captured["base_url"] == "https://inference.baseten.co/v1"
+    assert captured["path"] == "/chat/completions"
+    assert captured["headers"]["Authorization"] == f"Api-Key {SENTINEL_KEY}"
+    body = captured["json"]
+    assert body["model"] == "meta-models/muse-spark-open-1026"
+    assert body["max_tokens"] == 512
+    assert body["messages"][0]["content"][1] == {
+        "type": "image_url",
+        "image_url": {"url": "data:image/png;base64,c3ludGhldGlj"},
+    }
+    assert SENTINEL_KEY not in result.text
 
 
 def test_client_error_maps_to_502_without_leaking(monkeypatch):
@@ -252,7 +351,11 @@ def test_exception_messages_never_contain_key(monkeypatch):
 
     monkeypatch.setattr(meta_client.httpx, "Client", _ErrClient)
     with pytest.raises(meta_client.MetaClientError) as excinfo:
-        meta_client.call_model(input="x")
+        meta_client.call_model(
+            capability=meta_client.Capability.IMAGE_UNDERSTANDING,
+            image_data_url="data:image/png;base64,c3ludGhldGlj",
+            objective="Read this label.",
+        )
     assert SENTINEL_KEY not in str(excinfo.value)
     assert "Bearer" not in str(excinfo.value)
 

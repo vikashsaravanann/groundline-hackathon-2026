@@ -10,18 +10,16 @@ the rules are enforced in one place:
 * The typed ``output[]`` array is parsed properly (a reasoning item then a
   message item); a non-``completed`` status or a non-null ``error`` raises a
   typed error rather than returning empty text.
-* ``MODEL_API_KEY`` is read from the environment. It is never logged, never put
+* Provider credentials are read from the environment. They are never logged, never put
   in an exception message, and never placed on a returned object.
 
 docs/SECURITY.md rule 7: when no key is configured, or ``GROUNDLINE_FORCE_MOCK``
 is ``1``, the adapter serves a recorded fixture and marks the result
 ``mode="MOCK"``. A fixture is never presented as a live model call.
 
-The live *image* wire-format (``input_image`` data URL) mirrors the Responses
-convention the endpoint already follows (``reasoning``, ``store``, typed
-``output[]``). The recorded fixture was captured over the verified *text* path;
-the image path's live behaviour is not yet independently verified, so the demo
-runs in MOCK. See docs/NEW_WORK.md.
+The Meta image wire-format was exercised with a synthetic label on 27 Oct 2026;
+its full response is recorded under ``fixtures/`` and replayed offline. Baseten
+is implemented as an OpenAI-compatible adapter but has not been called live.
 """
 from __future__ import annotations
 
@@ -29,14 +27,18 @@ import json
 import os
 import time
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Protocol
 
 import httpx
 
 MODEL_ID = "muse-spark-1.3"
 BASE_URL = "https://api.meta.ai/v1"
 RESPONSES_PATH = "/responses"
+BASETEN_BASE_URL = "https://inference.baseten.co/v1"
+BASETEN_MODEL_ID = "meta-models/muse-spark-open-1026"
+CHAT_COMPLETIONS_PATH = "/chat/completions"
 
 # Cheapest reasoning level the API accepts. Reading visible facts off a label is
 # extraction, not deliberation, so it defaults to the floor. Only the planner
@@ -54,6 +56,7 @@ DEFAULT_MAX_OUTPUT_TOKENS = 512
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 DEFAULT_FIXTURE = "analyze_label.json"
+BASETEN_FIXTURE = "analyze_label_baseten_mock.json"
 
 # muse-spark-1.3 list price, US dollars per million tokens (recorded Day 1).
 PRICE_INPUT_PER_M = 1.25
@@ -72,6 +75,26 @@ class MetaResponseError(MetaClientError):
 
 class MetaTransportError(MetaClientError):
     """The request could not be completed (timeout, connection, or HTTP status)."""
+
+
+class Capability(StrEnum):
+    """Product capability requested by callers; provider choice stays internal."""
+
+    IMAGE_UNDERSTANDING = "image_understanding"
+
+
+class ProviderAdapter(Protocol):
+    name: str
+    capabilities: frozenset[Capability]
+    base_url: str
+    path: str
+    model_id: str
+    key_env: str
+    auth_scheme: str
+    fixture: str
+
+    def build_payload(self, *, image_data_url: str, objective: str, effort: str, max_output_tokens: int) -> dict: ...
+    def parse(self, body: dict, *, elapsed_ms: int, mode: str) -> "ModelResult": ...
 
 
 @dataclass(frozen=True)
@@ -105,6 +128,17 @@ def _coerce_usage(raw: Optional[dict]) -> Usage:
     output_tokens = int(raw.get("output_tokens") or raw.get("completion_tokens") or 0)
     total = int(raw.get("total_tokens") or (input_tokens + output_tokens))
     return Usage(input_tokens, output_tokens, total)
+
+
+def _objective_instruction(objective: str) -> str:
+    return (
+        "You are reading a label or document for a software agent. "
+        "Extract only the visible facts you can actually see. Do not guess. "
+        f"The user's objective is: {objective}\n"
+        'Respond with ONLY a JSON object of the form '
+        '{"facts":[{"label":str,"value":str,"confidence":number between 0 and 1}],'
+        '"overall_confidence":number between 0 and 1}. No prose.'
+    )
 
 
 def _extract_output_text(body: dict) -> str:
@@ -162,11 +196,11 @@ def parse_response(body: dict, *, elapsed_ms: int, mode: str) -> ModelResult:
     )
 
 
-def use_mock() -> bool:
+def use_mock(capability: Capability = Capability.IMAGE_UNDERSTANDING) -> bool:
     """MOCK when forced, or when no key is configured (rule 7)."""
     if os.environ.get("GROUNDLINE_FORCE_MOCK") == "1":
         return True
-    return not os.environ.get("MODEL_API_KEY")
+    return not os.environ.get(provider_for(capability).key_env)
 
 
 def _load_fixture(name: str) -> dict:
@@ -180,28 +214,117 @@ def build_image_input(image_data_url: str, objective: str) -> list[dict]:
 
     Used on the live path only; MOCK ignores the input and serves the fixture.
     """
-    instruction = (
-        "You are reading a label or document for a software agent. "
-        "Extract only the visible facts you can actually see. Do not guess. "
-        f"The user's objective is: {objective}\n"
-        'Respond with ONLY a JSON object of the form '
-        '{"facts":[{"label":str,"value":str,"confidence":number between 0 and 1}],'
-        '"overall_confidence":number between 0 and 1}. No prose.'
-    )
     return [
         {
             "role": "user",
             "content": [
-                {"type": "input_text", "text": instruction},
+                {"type": "input_text", "text": _objective_instruction(objective)},
                 {"type": "input_image", "image_url": image_data_url},
             ],
         }
     ]
 
 
+def build_chat_messages(image_data_url: str, objective: str) -> list[dict]:
+    """OpenAI-compatible chat-completions message shape for image analysis."""
+    return [{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": _objective_instruction(objective)},
+            {"type": "image_url", "image_url": {"url": image_data_url}},
+        ],
+    }]
+
+
+def parse_chat_completion(body: dict, *, elapsed_ms: int, mode: str) -> ModelResult:
+    """Normalize a chat-completions response into the common result type."""
+    choices = body.get("choices") or []
+    first = choices[0] if choices and isinstance(choices[0], dict) else {}
+    message = first.get("message", {})
+    content = message.get("content") if isinstance(message, dict) else None
+    if isinstance(content, list):
+        content = "".join(
+            part.get("text", "") for part in content
+            if isinstance(part, dict) and isinstance(part.get("text"), str)
+        )
+    if not isinstance(content, str) or not content.strip():
+        raise MetaResponseError("chat-completions response contained no message text")
+    return ModelResult(
+        text=content,
+        model=str(body.get("model") or BASETEN_MODEL_ID),
+        usage=_coerce_usage(body.get("usage")),
+        elapsed_ms=elapsed_ms,
+        mode=mode,
+        status="completed",
+    )
+
+
+@dataclass(frozen=True)
+class ResponsesProvider:
+    name: str = "meta"
+    capabilities: frozenset[Capability] = frozenset({Capability.IMAGE_UNDERSTANDING})
+    base_url: str = BASE_URL
+    path: str = RESPONSES_PATH
+    model_id: str = MODEL_ID
+    key_env: str = "MODEL_API_KEY"
+    auth_scheme: str = "Bearer"
+    fixture: str = DEFAULT_FIXTURE
+
+    def build_payload(self, *, image_data_url: str, objective: str, effort: str, max_output_tokens: int) -> dict:
+        return {
+            "model": self.model_id,
+            "input": build_image_input(image_data_url, objective),
+            "reasoning": {"effort": effort},
+            "store": False,
+            "max_output_tokens": max_output_tokens,
+        }
+
+    def parse(self, body: dict, *, elapsed_ms: int, mode: str) -> ModelResult:
+        return parse_response(body, elapsed_ms=elapsed_ms, mode=mode)
+
+
+@dataclass(frozen=True)
+class BasetenProvider:
+    name: str = "baseten"
+    capabilities: frozenset[Capability] = frozenset({Capability.IMAGE_UNDERSTANDING})
+    base_url: str = BASETEN_BASE_URL
+    path: str = CHAT_COMPLETIONS_PATH
+    model_id: str = BASETEN_MODEL_ID
+    key_env: str = "BASETEN_API_KEY"
+    auth_scheme: str = "Api-Key"
+    fixture: str = BASETEN_FIXTURE
+
+    def build_payload(self, *, image_data_url: str, objective: str, effort: str, max_output_tokens: int) -> dict:
+        return {
+            "model": self.model_id,
+            "messages": build_chat_messages(image_data_url, objective),
+            "max_tokens": max_output_tokens,
+        }
+
+    def parse(self, body: dict, *, elapsed_ms: int, mode: str) -> ModelResult:
+        return parse_chat_completion(body, elapsed_ms=elapsed_ms, mode=mode)
+
+
+PROVIDERS: dict[str, ProviderAdapter] = {
+    "meta": ResponsesProvider(),
+    "baseten": BasetenProvider(),
+}
+
+
+def provider_for(capability: Capability) -> ProviderAdapter:
+    """Resolve a capability using internal routing, never a vendor at call sites."""
+    selected = os.environ.get(f"GROUNDLINE_{capability.name}_PROVIDER", "meta").strip().lower()
+    provider = PROVIDERS.get(selected)
+    if provider is None or capability not in provider.capabilities:
+        raise MetaClientError(f"no provider configured for capability {capability.value!r}")
+    return provider
+
+
 def call_model(
     *,
-    input: Any,
+    capability: Capability,
+    image_data_url: str,
+    objective: str,
     effort: str = DEFAULT_EFFORT,
     max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
     timeout: float = DEFAULT_TIMEOUT,
@@ -209,31 +332,30 @@ def call_model(
 ) -> ModelResult:
     """The one entry point for all model calls.
 
-    In MOCK mode the recorded fixture is parsed through the exact same path as a
-    live response, so MOCK and live cannot drift. In live mode the request pins
-    effort and ``store=false``, applies a hard timeout, and retries at most once.
+    The caller selects a capability, not a vendor. Internal configuration routes
+    that capability to an adapter. MOCK and live responses share each adapter's
+    response parser.
     """
     if effort not in ALLOWED_EFFORTS:
         raise ValueError(f"effort must be one of {ALLOWED_EFFORTS}, got {effort!r}")
 
-    if use_mock():
-        body = _load_fixture(mock_fixture)
-        return parse_response(body, elapsed_ms=0, mode="MOCK")
+    provider = provider_for(capability)
+    if use_mock(capability):
+        fixture = mock_fixture if mock_fixture != DEFAULT_FIXTURE else provider.fixture
+        return provider.parse(_load_fixture(fixture), elapsed_ms=0, mode="MOCK")
+    api_key = os.environ.get(provider.key_env)
+    if not api_key:
+        fixture = mock_fixture if mock_fixture != DEFAULT_FIXTURE else provider.fixture
+        return provider.parse(_load_fixture(fixture), elapsed_ms=0, mode="MOCK")
 
-    api_key = os.environ.get("MODEL_API_KEY")
-    if not api_key:  # defensive: use_mock() already covers this
-        body = _load_fixture(mock_fixture)
-        return parse_response(body, elapsed_ms=0, mode="MOCK")
-
-    payload = {
-        "model": MODEL_ID,
-        "input": input,
-        "reasoning": {"effort": effort},
-        "store": False,
-        "max_output_tokens": max_output_tokens,
-    }
+    payload = provider.build_payload(
+        image_data_url=image_data_url,
+        objective=objective,
+        effort=effort,
+        max_output_tokens=max_output_tokens,
+    )
     headers = {
-        "Authorization": f"Bearer {api_key}",
+        "Authorization": f"{provider.auth_scheme} {api_key}",
         "Content-Type": "application/json",
     }
 
@@ -241,8 +363,8 @@ def call_model(
     start = time.monotonic()
     for _attempt in range(MAX_ATTEMPTS):
         try:
-            with httpx.Client(base_url=BASE_URL, timeout=timeout) as client:
-                resp = client.post(RESPONSES_PATH, json=payload, headers=headers)
+            with httpx.Client(base_url=provider.base_url, timeout=timeout) as client:
+                resp = client.post(provider.path, json=payload, headers=headers)
             elapsed_ms = int((time.monotonic() - start) * 1000)
             if resp.status_code >= 500:
                 # Transient upstream; retry if an attempt remains.
@@ -254,7 +376,7 @@ def call_model(
                 raise MetaTransportError(
                     f"request rejected with HTTP {resp.status_code}"
                 )
-            return parse_response(resp.json(), elapsed_ms=elapsed_ms, mode="live")
+            return provider.parse(resp.json(), elapsed_ms=elapsed_ms, mode="live")
         except (httpx.TimeoutException, httpx.TransportError) as exc:
             # Never interpolate the exception text: it can carry the full URL.
             last_exc = MetaTransportError(f"transport failure ({type(exc).__name__})")

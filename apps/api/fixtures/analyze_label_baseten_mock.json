@@ -1,0 +1,21 @@
+{
+  "id": "chatcmpl-groundline-baseten-offline",
+  "object": "chat.completion",
+  "created": 1793107200,
+  "model": "meta-models/muse-spark-open-1026",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"facts\":[{\"label\":\"Company\",\"value\":\"NORTHSTAR LABS\",\"confidence\":0.99},{\"label\":\"PRODUCT\",\"value\":\"DESK LAMP\",\"confidence\":0.99},{\"label\":\"MODEL\",\"value\":\"NSL-2048\",\"confidence\":0.99},{\"label\":\"INPUT\",\"value\":\"12 V DC\",\"confidence\":0.99},{\"label\":\"SERIAL\",\"value\":\"SYNTH-0001\",\"confidence\":0.99}],\"overall_confidence\":0.99}"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 846,
+    "completion_tokens": 115,
+    "total_tokens": 961
+  }
+}
