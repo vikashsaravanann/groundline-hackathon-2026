@@ -1,20 +1,152 @@
 @import "tailwindcss";
 
-/* Groundline's capture tool is a dark, camera-first surface in both themes. */
-:root {
-  --background: #020617; /* slate-950 */
-  --foreground: #e2e8f0; /* slate-200 */
+/* ───────────────────────── Design tokens ─────────────────────────
+   One source of truth. Components use the Tailwind utilities these
+   generate (bg-cloud, text-ink, border-line, …) rather than raw hex. */
+@theme {
+  --color-white: #ffffff;
+  --color-cloud: #f7f9fc;
+
+  --color-ink: #121826;
+  --color-ink-soft: #334155;
+  --color-navy: #0b2545;
+
+  --color-blue-light: #e7f3ff;
+  --color-blue-accent: #4d9de0;
+
+  --color-purple-light: #f1ecff;
+  --color-purple-secondary: #ede7f6;
+  --color-purple-accent: #8b72cf;
+
+  --color-pink-light: #fceaf3;
+  --color-pink-accent: #d977a5;
+
+  --color-gold-light: #fff4d9;
+  --color-gold-accent: #c49535;
+
+  --color-line: #dfe7ef;
+  --color-muted: #64748b;
+
+  --color-success: #16794b;
+  --color-warning: #9a620f;
+  --color-danger: #b4233c;
+
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", Menlo,
+    monospace;
+
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 28px;
+  --radius-2xl: 32px;
+  --radius-3xl: 40px;
+
+  --shadow-soft: 0 12px 36px rgba(22, 34, 59, 0.06);
+  --shadow-lift: 0 20px 50px rgba(22, 34, 59, 0.1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background-color: var(--color-white);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* The ambient pastel canvas: fixed so it never jutters while scrolling. */
+.app-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(231, 243, 255, 0.9), transparent 34%),
+    radial-gradient(circle at 88% 12%, rgba(241, 236, 255, 0.9), transparent 32%),
+    radial-gradient(circle at 76% 84%, rgba(252, 234, 243, 0.55), transparent 30%),
+    radial-gradient(circle at 20% 88%, rgba(255, 244, 217, 0.4), transparent 28%),
+    #ffffff;
+}
+
+/* ───────────────────────── Glass materials ───────────────────────── */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.glass-nav {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8px 28px rgba(22, 34, 59, 0.07);
+}
+
+/* A crisp, near-opaque surface for content that must stay readable. */
+.surface {
+  background: #ffffff;
+  border: 1px solid var(--color-line);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Opaque fallback where backdrop-filter is unsupported. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-panel,
+  .glass-nav {
+    background: rgba(255, 255, 255, 0.97);
+  }
+}
+
+/* Consistent, visible keyboard focus everywhere. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-blue-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ───────────────────────── Motion safety ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes gl-shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+.shimmer {
+  background-image: linear-gradient(
+    90deg,
+    rgba(231, 243, 255, 0) 0%,
+    rgba(231, 243, 255, 0.7) 50%,
+    rgba(231, 243, 255, 0) 100%
+  );
+  background-size: 400px 100%;
+  background-repeat: no-repeat;
+  animation: gl-shimmer 1.4s ease-in-out infinite;
 }
