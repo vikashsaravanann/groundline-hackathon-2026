@@ -16,7 +16,7 @@ describe("landing hero navigation", () => {
 
     expect(screen.getByRole("link", { name: /explore the workflow/i })).toHaveAttribute(
       "href",
-      "/workflow",
+      "/how-it-works",
     );
     expect(screen.getByRole("link", { name: /open groundline studio/i })).toHaveAttribute(
       "href",
