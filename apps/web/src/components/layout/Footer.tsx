@@ -1,9 +1,49 @@
 import Link from "next/link";
-import { Github } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BookOpen, Github, Home, Route, ShieldCheck, Sparkles } from "lucide-react";
 
 import { Wordmark } from "@/components/brand/Logo";
 
 const REPO = "https://github.com/vikashsaravanann/groundline-hackathon-2026";
+
+function FooterTile({
+  href,
+  label,
+  icon: Icon,
+  external = false,
+}: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  external?: boolean;
+}) {
+  const className = "group flex w-full items-center justify-between gap-3 rounded-2xl border border-line/70 bg-white/75 px-3.5 py-3 text-left text-sm font-medium text-ink-soft shadow-[0_2px_10px_rgba(22,34,59,0.035)] transition duration-200 hover:-translate-y-0.5 hover:border-blue-accent/30 hover:bg-white hover:text-ink hover:shadow-[0_8px_20px_rgba(22,34,59,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent focus-visible:ring-offset-2";
+  const content = (
+    <>
+      <span className="flex min-w-0 items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-light/70 text-navy transition group-hover:bg-blue-light">
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <span>{label}</span>
+      </span>
+      {external ? (
+        <ArrowUpRight className="h-4 w-4 shrink-0 text-muted transition group-hover:text-ink" aria-hidden="true" />
+      ) : (
+        <ArrowRight className="h-4 w-4 shrink-0 text-muted transition group-hover:translate-x-0.5 group-hover:text-ink" aria-hidden="true" />
+      )}
+    </>
+  );
+
+  return external ? (
+    <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+      {content}
+    </a>
+  ) : (
+    <Link href={href} className={className}>
+      {content}
+    </Link>
+  );
+}
 
 export function Footer() {
   return (
@@ -26,25 +66,22 @@ export function Footer() {
           <nav aria-label="Explore Groundline" className="flex h-full flex-col items-center gap-3 rounded-3xl border border-line/70 bg-gradient-to-br from-blue-light/45 via-white/80 to-pink-light/30 p-6 text-center text-sm">
             <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-ink">Explore</h2>
             <p className="mb-1 text-sm leading-relaxed text-ink-soft">Find your way around Groundline.</p>
-            <Link href="/" className="w-full rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink">Home</Link>
-            <Link href="/workflow" className="w-full rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink">How it works</Link>
-            <Link href="/studio" className="w-full rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink">Open Studio</Link>
+            <div className="flex w-full flex-col gap-2.5">
+              <FooterTile href="/" label="Home" icon={Home} />
+              <FooterTile href="/workflow" label="How it works" icon={Route} />
+              <FooterTile href="/studio" label="Open Studio" icon={Sparkles} />
+            </div>
           </nav>
 
           <nav aria-label="Project information" className="flex h-full flex-col items-center gap-3 rounded-3xl border border-line/70 bg-gradient-to-br from-blue-light/45 via-white/80 to-pink-light/30 p-6 text-center text-sm">
             <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-ink">Project</h2>
             <p className="mb-1 text-sm leading-relaxed text-ink-soft">Learn about the project and its scope.</p>
-            <Link href="/#features" className="w-full rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink">Features</Link>
-            <Link href="/about" className="w-full rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink">About the creator</Link>
-            <Link href="/#safety" className="w-full rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink">Safety</Link>
-            <a
-              href={REPO}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-2xl px-4 py-2.5 text-ink-soft transition hover:bg-white/80 hover:text-ink"
-            >
-              <Github className="h-4 w-4" /> GitHub repository
-            </a>
+            <div className="flex w-full flex-col gap-2.5">
+              <FooterTile href="/#features" label="Features" icon={Sparkles} />
+              <FooterTile href="/about" label="About the creator" icon={BookOpen} />
+              <FooterTile href="/#safety" label="Safety" icon={ShieldCheck} />
+              <FooterTile href={REPO} label="GitHub repository" icon={Github} external />
+            </div>
           </nav>
 
           <section aria-labelledby="reviewer-info" className="rounded-3xl border border-line/70 bg-gradient-to-br from-blue-light/45 via-white/80 to-pink-light/30 p-6">

@@ -18,5 +18,7 @@ describe("Groundline footer", () => {
     expect(screen.getByRole("link", { name: "How it works" })).toHaveAttribute("href", "/workflow");
     expect(screen.getByRole("link", { name: "About the creator" })).toHaveAttribute("href", "/about");
     expect(screen.getByRole("link", { name: "Open Studio" })).toHaveAttribute("href", "/studio");
+    expect(screen.getByRole("link", { name: "Features" })).toHaveClass("border");
+    expect(screen.getByRole("link", { name: "Safety" })).toHaveClass("focus-visible:ring-2");
   });
 });
