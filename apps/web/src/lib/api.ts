@@ -62,7 +62,7 @@ export async function analyzeImage({
       throw new ApiError(
         "timeout",
         "The analysis request timed out.",
-        "The backend took too long to respond. Check it is running, then try again.",
+        "The free backend may still be waking after inactivity. Keep this page open, wait a moment, then retry once.",
       );
     }
     if (signal?.aborted) {

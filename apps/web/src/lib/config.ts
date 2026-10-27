@@ -75,8 +75,10 @@ export type AllowedMime = (typeof ALLOWED_MIME)[number];
 export const SNAPSHOT_MIME: AllowedMime = "image/jpeg";
 export const SNAPSHOT_MAX_EDGE = 1280; // longest side, pixels
 
-// Request timeout for the analysis call (ms). Bounds a hung backend.
-export const ANALYZE_TIMEOUT_MS = 30_000;
+// Render Free may take 50 seconds or more to wake after inactivity. Keep a
+// bounded wait with headroom, but never auto-retry: future LIVE requests can
+// incur a charge and the first response may only be delayed, not lost.
+export const ANALYZE_TIMEOUT_MS = 120_000;
 
 // Synthetic example objectives (no real purchases/registrations implied).
 export const EXAMPLE_OBJECTIVES = [
