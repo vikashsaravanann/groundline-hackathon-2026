@@ -11,10 +11,10 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { label: "Home", href: "/", match: "/" },
-  { label: "How it works", href: "/workflow", match: "/workflow" },
-  { label: "Features", href: "/#features", match: "/#features" },
+  { label: "How it works", href: "/how-it-works", match: "/how-it-works" },
+  { label: "Features", href: "/features", match: "/features" },
   { label: "About creator", href: "/about", match: "/about" },
-  { label: "Safety", href: "/#safety", match: "/#safety" },
+  { label: "Safety", href: "/legal/security", match: "/legal/security" },
 ];
 
 export function AppHeader() {

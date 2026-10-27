@@ -91,7 +91,7 @@ export default function AboutPage() {
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <ButtonLink href="/studio" size="lg">Open Groundline Studio <ArrowRight className="h-4 w-4" aria-hidden="true" /></ButtonLink>
-            <ButtonLink href="/workflow" variant="secondary" size="lg">Explore the workflow</ButtonLink>
+            <ButtonLink href="/how-it-works" variant="secondary" size="lg">Explore the workflow</ButtonLink>
           </div>
         </div>
       </main>

@@ -35,7 +35,7 @@ export function Hero() {
               Open Groundline Studio
               <ArrowRight className="h-4 w-4" />
             </ButtonLink>
-            <ButtonLink href="/workflow" variant="secondary" size="lg">
+            <ButtonLink href="/how-it-works" variant="secondary" size="lg">
               Explore the Workflow
             </ButtonLink>
           </div>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { ArrowRight, ArrowUpRight, BookOpen, Github, Home, Route, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BookOpen, FileText, Github, Home, LockKeyhole, Route, ShieldCheck, Sparkles } from "lucide-react";
 
 import { Wordmark } from "@/components/brand/Logo";
 
@@ -11,13 +11,15 @@ function FooterTile({
   label,
   icon: Icon,
   external = false,
+  compact = false,
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
   external?: boolean;
+  compact?: boolean;
 }) {
-  const className = "group flex w-full items-center justify-between gap-3 rounded-2xl border border-line/70 bg-white/75 px-3.5 py-3 text-left text-sm font-medium text-ink-soft shadow-[0_2px_10px_rgba(22,34,59,0.035)] transition duration-200 hover:-translate-y-0.5 hover:border-blue-accent/30 hover:bg-white hover:text-ink hover:shadow-[0_8px_20px_rgba(22,34,59,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent focus-visible:ring-offset-2";
+  const className = `group flex ${compact ? "w-auto" : "w-full"} items-center justify-between gap-3 rounded-2xl border border-line/70 bg-white/75 px-3.5 py-3 text-left text-sm font-medium text-ink-soft shadow-[0_2px_10px_rgba(22,34,59,0.035)] transition duration-200 hover:-translate-y-0.5 hover:border-blue-accent/30 hover:bg-white hover:text-ink hover:shadow-[0_8px_20px_rgba(22,34,59,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent focus-visible:ring-offset-2`;
   const content = (
     <>
       <span className="flex min-w-0 items-center gap-3">
@@ -68,7 +70,7 @@ export function Footer() {
             <p className="mb-1 text-sm leading-relaxed text-ink-soft">Find your way around Groundline.</p>
             <div className="flex w-full flex-col gap-2.5">
               <FooterTile href="/" label="Home" icon={Home} />
-              <FooterTile href="/workflow" label="How it works" icon={Route} />
+              <FooterTile href="/how-it-works" label="How it works" icon={Route} />
               <FooterTile href="/studio" label="Open Studio" icon={Sparkles} />
             </div>
           </nav>
@@ -77,9 +79,8 @@ export function Footer() {
             <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-ink">Project</h2>
             <p className="mb-1 text-sm leading-relaxed text-ink-soft">Learn about the project and its scope.</p>
             <div className="flex w-full flex-col gap-2.5">
-              <FooterTile href="/#features" label="Features" icon={Sparkles} />
+              <FooterTile href="/features" label="Features" icon={Sparkles} />
               <FooterTile href="/about" label="About the creator" icon={BookOpen} />
-              <FooterTile href="/#safety" label="Safety" icon={ShieldCheck} />
               <FooterTile href={REPO} label="GitHub repository" icon={Github} external />
             </div>
           </nav>
@@ -102,6 +103,12 @@ export function Footer() {
           <p className="mx-auto max-w-5xl">Created by Vikash Saravanan, founder of Logic Intelligence Technologies; this is an individual hackathon entry, not a company submission.</p>
           <p className="mx-auto max-w-5xl">Not affiliated with, endorsed by, or sponsored by Meta Platforms or Cerebral Valley. Licensed under Apache-2.0 · 2026.</p>
         </div>
+        <nav aria-label="Legal policies" className="mt-6 flex flex-wrap justify-center gap-2">
+          <FooterTile href="/legal/terms-and-conditions" label="Terms and Conditions" icon={FileText} compact />
+          <FooterTile href="/legal/privacy-policy" label="Privacy Policy" icon={LockKeyhole} compact />
+          <FooterTile href="/legal/security" label="Security" icon={ShieldCheck} compact />
+          <FooterTile href="/legal/cookies" label="Cookies" icon={FileText} compact />
+        </nav>
       </div>
     </footer>
   );
