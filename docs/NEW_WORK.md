@@ -161,4 +161,15 @@ published). No history rewrite, no force-push, no cloud changes.
 - Frontend verification: 27 tests passed; TypeScript, lint, and production
   build passed. The local Chrome camera permission request remained pending,
   so no physical camera capture/retake pass is claimed. Safari/Firefox remain
-  unverified. This change is local and unpublished.
+  unverified. Publication and deployment are recorded below.
+
+### Publication — 27 October 2026
+
+- Camera correction published to `main` as `9b7abb0ea7a380c1d92df372475bebc53e0c773e`.
+- Frontend CI run `40527383557` and Backend CI run `40527383665` both succeeded.
+- Vercel production deployment `dpl_13ESNEhXXpTGB9hj8htVgTZwVuyv` is READY for
+  the published commit. Its aliases include the Groundline custom domain.
+- The existing Render backend was not redeployed because this change contains
+  no backend files. Its `/healthz` GET returned HTTP 200 in MOCK mode.
+- HTTPS to the custom frontend hostname reset during TLS negotiation from this
+  Mac, so public reachability through that hostname remains unverified here.
