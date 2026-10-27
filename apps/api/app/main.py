@@ -11,7 +11,8 @@ from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 
-from app import meta_client
+from app import meta_client, provider_router
+from app.model_types import Capability, ProviderError
 
 app = FastAPI(title="Groundline API", version="0.1.0")
 
@@ -93,7 +94,7 @@ def healthz() -> HealthResponse:
     never returned, logged, or echoed, and ``meta_key_present`` is deliberately
     not exposed.
     """
-    mode = "MOCK" if meta_client.use_mock() else "live"
+    mode = "MOCK" if provider_router.use_mock(Capability.IMAGE_FACT_EXTRACTION) else "live"
     return HealthResponse(status="ok", version=app.version, mode=mode)
 
 
@@ -251,13 +252,13 @@ def analyze(req: AnalyzeRequest, response: Response) -> AnalyzeResponse:
         else f"data:{req.mime_type};base64,{req.image_base64}"
     )
     try:
-        result = meta_client.call_model(
-            capability=meta_client.Capability.IMAGE_UNDERSTANDING,
+        result = provider_router.call_model(
+            capability=Capability.IMAGE_FACT_EXTRACTION,
             image_data_url=data_url,
             objective=req.objective,
             effort=effort,
         )
-    except meta_client.MetaClientError as exc:
+    except ProviderError as exc:
         elapsed_ms = int((time.monotonic() - started) * 1000)
         # Log the exception type only — never the message, image, or objective.
         logger.warning(

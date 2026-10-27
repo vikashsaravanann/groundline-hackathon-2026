@@ -173,17 +173,18 @@ preserving it as chronological evidence.
 - One additional authorized Meta request was made directly against the synthetic
   image path: HTTP 200, `low` reasoning, `store:false`, and 1,314 input / 395
   output tokens. Muse Spark correctly read all five printed label values. The
-  full response and its parser regression test are in `apps/api/fixtures/` and
+  sanitized authentic response fixture and parser regression test are in
+  `apps/api/fixtures/muse_spark_image_response.json` and
   `apps/api/tests/test_analyze.py`. Estimated cost from the adapter's recorded
   token rates is $0.00332125; the provider response did not report invoice cost.
-- Baseten is registered behind the same `IMAGE_UNDERSTANDING` capability using
-  the specified OpenAI-compatible endpoint and exact model id. Its response
-  parser, request shape, and synthetic MOCK fixture are tested offline only;
-  no Baseten request was made.
-- The session cannot read Render's protected environment values through its
-  authorized service inspection. No attempt was made to bypass that boundary,
-  and no Render key was copied into the local `.env`. The local Baseten key is
-  therefore not configured by this work; Baseten remains uncalled.
+- Baseten is a separate adapter, routed only to `GENERAL_TEXT_REASONING` when
+  explicitly enabled by a backend operator. Its OpenAI-compatible response
+  parser, request shape, and synthetic fixture are tested offline only; no
+  Baseten request was made. Image fact extraction continues to default to Meta.
+- The authorized Render service inspection does not expose environment
+  variable names or values, so this work did not independently verify whether
+  `BASETEN_API_KEY` is present. No attempt was made to bypass that boundary,
+  and no key was copied into the local `.env`. Baseten remains uncalled.
 - The connected device inventory exposed the Mac and browser tabs, but no
   running iPhone Mirroring or physical phone surface. H02 remains
   **PARTIALLY VERIFIED**; a real camera permission/capture/stop/retake check is

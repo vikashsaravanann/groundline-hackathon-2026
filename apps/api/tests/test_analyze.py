@@ -5,14 +5,16 @@ client that replays the recorded fixture, so the credential-leak and payload
 assertions run without spending a token.
 """
 import base64
+import json
 import logging
 import socket
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app import main, meta_client
+from app import baseten_client, main, meta_client, provider_router
 from app.main import app
+from app.model_types import Capability, ProviderConfigurationError, ProviderResponseError, ProviderTransportError
 
 client = TestClient(app)
 
@@ -55,49 +57,68 @@ def test_parser_reads_recorded_fixture():
 
 
 def test_parser_reads_recorded_multimodal_image_fixture():
-    # This is the full recorded Muse Responses envelope from the synthetic
-    # image request. Keep it on the same typed-output parser as the text fixture.
-    body = meta_client._load_fixture("analyze_label_image_meta_live.json")
+    # Sanitized authentic response from a later synthetic image call; the
+    # original GL-DEMO-2048 response is documented but its raw body was absent.
+    body = meta_client._load_fixture(meta_client.IMAGE_FIXTURE)
     result = meta_client.parse_response(body, elapsed_ms=0, mode="MOCK")
     assert result.status == "completed"
     assert result.model == "muse-spark-1.3"
+    assert result.response_id == "resp_sanitized_synthetic_image_fixture"
     assert body["reasoning"]["effort"] == "low"
     assert body["store"] is False
-    assert '"value":"NSL-2048"' in result.text
+    facts = json.loads(result.text)["facts"]
+    assert {fact["label"]: fact["value"] for fact in facts}["MODEL"] == "NSL-2048"
     assert result.usage.input_tokens == 1314
     assert result.usage.output_tokens == 395
     assert result.usage.total_tokens == 1709
 
 
-def test_baseten_fixture_uses_common_capability_response_contract(monkeypatch):
-    monkeypatch.setenv("GROUNDLINE_IMAGE_UNDERSTANDING_PROVIDER", "baseten")
+def test_baseten_synthetic_fixture_parses_openai_response_shape():
+    body = baseten_client.BasetenClient().load_fixture()
+    result = baseten_client.parse_response(body, elapsed_ms=0, mode="MOCK")
+    assert result.model == "meta-models/muse-spark-open-1026"
+    assert result.response_id == "chatcmpl-groundline-synthetic-fixture"
+    assert result.usage.input_tokens == 846
+    assert result.usage.output_tokens == 115
+    assert result.usage.total_tokens == 961
+    assert result.usage.estimated_cost_usd is None
+    facts = json.loads(result.text)["facts"]
+    assert {fact["label"]: fact["value"] for fact in facts}["MODEL"] == "NSL-2048"
+
+
+def test_baseten_fixture_is_only_available_when_capability_is_explicitly_routed(monkeypatch):
+    monkeypatch.delenv("GROUNDLINE_PROVIDER_GENERAL_TEXT_REASONING", raising=False)
+    with pytest.raises(ProviderConfigurationError):
+        provider_router.call_model(
+            capability=Capability.GENERAL_TEXT_REASONING,
+            objective="Reason about this text.",
+        )
+    monkeypatch.setenv("GROUNDLINE_PROVIDER_GENERAL_TEXT_REASONING", "baseten")
     monkeypatch.delenv("GROUNDLINE_FORCE_MOCK", raising=False)
     monkeypatch.delenv("BASETEN_API_KEY", raising=False)
-    result = meta_client.call_model(
-        capability=meta_client.Capability.IMAGE_UNDERSTANDING,
+    result = provider_router.call_model(
+        capability=Capability.GENERAL_TEXT_REASONING,
         image_data_url="data:image/png;base64,c3ludGhldGlj",
-        objective="Read the product details.",
+        objective="Reason about the visible label.",
     )
     assert result.mode == "MOCK"
     assert result.model == "meta-models/muse-spark-open-1026"
-    assert '"value":"NSL-2048"' in result.text
     assert result.usage.input_tokens == 846
     assert result.usage.output_tokens == 115
 
 
 def test_baseten_force_mock_never_calls_network_even_with_key(monkeypatch):
-    monkeypatch.setenv("GROUNDLINE_IMAGE_UNDERSTANDING_PROVIDER", "baseten")
+    monkeypatch.setenv("GROUNDLINE_PROVIDER_GENERAL_TEXT_REASONING", "baseten")
     monkeypatch.setenv("GROUNDLINE_FORCE_MOCK", "1")
     monkeypatch.setenv("BASETEN_API_KEY", SENTINEL_KEY)
 
     def _boom(*args, **kwargs):
         raise AssertionError("Baseten network client constructed while FORCE_MOCK is set")
 
-    monkeypatch.setattr(meta_client.httpx, "Client", _boom)
-    result = meta_client.call_model(
-        capability=meta_client.Capability.IMAGE_UNDERSTANDING,
-        image_data_url="data:image/png;base64,c3ludGhldGlj",
-        objective="Read the product details.",
+    monkeypatch.setattr(baseten_client.httpx, "Client", _boom)
+    result = provider_router.call_model(
+        capability=Capability.GENERAL_TEXT_REASONING,
+        objective="Reason about this text.",
     )
     assert result.mode == "MOCK"
     assert result.model == "meta-models/muse-spark-open-1026"
@@ -139,8 +160,8 @@ def test_completed_but_empty_text_raises():
 
 def test_bad_effort_rejected_before_any_call():
     with pytest.raises(ValueError):
-        meta_client.call_model(
-            capability=meta_client.Capability.IMAGE_UNDERSTANDING,
+        provider_router.call_model(
+            capability=Capability.IMAGE_FACT_EXTRACTION,
             image_data_url="data:image/png;base64,c3ludGhldGlj",
             objective="Read this label.",
             effort="turbo",
@@ -291,38 +312,48 @@ def test_live_path_never_leaks_key_and_pins_cost_controls(monkeypatch):
     assert _FakeClient.captured["headers"]["Authorization"] == f"Bearer {SENTINEL_KEY}"
 
 
-def test_baseten_live_adapter_shape_is_offline_only(monkeypatch):
+def test_baseten_multimodal_request_shape_and_bearer_header_offline(monkeypatch):
     monkeypatch.setenv("BASETEN_API_KEY", SENTINEL_KEY)
-    monkeypatch.setenv("GROUNDLINE_IMAGE_UNDERSTANDING_PROVIDER", "baseten")
     monkeypatch.delenv("GROUNDLINE_FORCE_MOCK", raising=False)
+    payload_seen = {}
 
-    class _BasetenFakeClient(_FakeClient):
+    class _FakeBasetenResponse(_FakeResponse):
+        def json(self):
+            return baseten_client.BasetenClient().load_fixture()
+
+    class _FakeBasetenClient:
+        def __init__(self, *args, **kwargs):
+            self.kwargs = kwargs
+        def __enter__(self): return self
+        def __exit__(self, *exc): return False
         def post(self, path, json=None, headers=None):
-            _FakeClient.captured = {
-                "path": path, "json": json, "headers": headers,
-                "base_url": self.kwargs.get("base_url"),
-            }
-            return _FakeResponse(200, meta_client._load_fixture(meta_client.BASETEN_FIXTURE))
+            payload_seen.update(path=path, json=json, headers=headers, base_url=self.kwargs["base_url"])
+            return _FakeBasetenResponse(200, {})
 
-    monkeypatch.setattr(meta_client.httpx, "Client", _BasetenFakeClient)
-    result = meta_client.call_model(
-        capability=meta_client.Capability.IMAGE_UNDERSTANDING,
+    def _no_socket(*args, **kwargs):
+        raise AssertionError("Baseten adapter attempted a real socket")
+
+    monkeypatch.setattr(baseten_client.httpx, "Client", _FakeBasetenClient)
+    monkeypatch.setattr(socket.socket, "connect", _no_socket)
+    result = baseten_client.BasetenClient().complete_live(
+        prompt="Extract the visible facts from this synthetic product label.",
         image_data_url="data:image/png;base64,c3ludGhldGlj",
-        objective="Read the product details.",
     )
     assert result.mode == "live"
     assert result.model == "meta-models/muse-spark-open-1026"
-    captured = _FakeClient.captured
-    assert captured["base_url"] == "https://inference.baseten.co/v1"
-    assert captured["path"] == "/chat/completions"
-    assert captured["headers"]["Authorization"] == f"Api-Key {SENTINEL_KEY}"
-    body = captured["json"]
+    assert payload_seen["base_url"] == "https://inference.baseten.co/v1"
+    assert payload_seen["path"] == "/chat/completions"
+    assert payload_seen["headers"]["Authorization"] == f"Bearer {SENTINEL_KEY}"
+    body = payload_seen["json"]
     assert body["model"] == "meta-models/muse-spark-open-1026"
-    assert body["max_tokens"] == 512
-    assert body["messages"][0]["content"][1] == {
+    assert body["max_tokens"] == 4096
+    assert body["messages"][0]["content"] == [
+        {"type": "text", "text": "Extract the visible facts from this synthetic product label."},
+        {
         "type": "image_url",
         "image_url": {"url": "data:image/png;base64,c3ludGhldGlj"},
-    }
+        },
+    ]
     assert SENTINEL_KEY not in result.text
 
 
@@ -351,8 +382,8 @@ def test_exception_messages_never_contain_key(monkeypatch):
 
     monkeypatch.setattr(meta_client.httpx, "Client", _ErrClient)
     with pytest.raises(meta_client.MetaClientError) as excinfo:
-        meta_client.call_model(
-            capability=meta_client.Capability.IMAGE_UNDERSTANDING,
+        provider_router.call_model(
+            capability=Capability.IMAGE_FACT_EXTRACTION,
             image_data_url="data:image/png;base64,c3ludGhldGlj",
             objective="Read this label.",
         )

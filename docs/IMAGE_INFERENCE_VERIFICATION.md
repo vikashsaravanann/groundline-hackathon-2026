@@ -67,9 +67,9 @@ numbers or evidence references are fabricated.
 ## Additional multimodal fixture capture — 27 Oct 2026
 
 One explicitly authorized, single-attempt live request was sent directly to
-Meta using a synthetic PNG label. No retry was made. The response is preserved
-verbatim in `apps/api/fixtures/analyze_label_image_meta_live.json`; the source
-image is `apps/api/fixtures/synthetic_product_label.png` (SHA-256
+Meta using a synthetic PNG label. No retry was made. A sanitized response
+fixture is recorded at `apps/api/fixtures/muse_spark_image_response.json`; the
+source image is `apps/api/fixtures/synthetic_product_label.png` (SHA-256
 `34a031a10d9910ea89141015600be473f3cb33933687e6e5cedc2934a202cbc4`).
 
 - HTTP status: **200**; response status: `completed`.
@@ -99,6 +99,11 @@ image is `apps/api/fixtures/synthetic_product_label.png` (SHA-256
   }
   ```
 
-The offline test loads that raw response and passes it through the same
-`parse_response` typed `output[]` parser as the text response fixture. No more
-live model calls are part of this verification.
+The raw response for the earlier `GL-DEMO-2048` run was not found in local
+records; its successful result remains documented above. The committed fixture
+is an authentic sanitized response from the separate `NSL-2048` synthetic-image
+request. It retains the real model output, completed status, effort, `store`
+setting and usage, while replacing response IDs and omitting opaque encrypted
+reasoning metadata. The offline test passes it through the same typed
+`output[]` parser as the text response fixture. No more live model calls are
+part of this verification.
