@@ -11,14 +11,90 @@ import type { SelectedImage } from "@/types/studio";
  * Capture a single still from a live <video>, resize it, validate its MIME, and
  * enforce the backend's byte ceiling — all before the frame leaves the page.
  */
-export async function captureFromVideo(video: HTMLVideoElement): Promise<SelectedImage> {
+export async function captureFromVideo(
+  video: HTMLVideoElement,
+  captureFrame?: HTMLElement | null,
+): Promise<SelectedImage> {
   const vw = video.videoWidth;
   const vh = video.videoHeight;
   if (!vw || !vh) {
     throw new Error("The camera has not produced a frame yet — try again in a moment.");
   }
-  const canvas = drawScaled((ctx, w, h) => ctx.drawImage(video, 0, 0, w, h), vw, vh);
+  const crop = captureFrame
+    ? sourceCropForFrame(
+        vw,
+        vh,
+        video.getBoundingClientRect(),
+        captureFrame.getBoundingClientRect(),
+      )
+    : { x: 0, y: 0, width: vw, height: vh };
+  const canvas = drawScaled(
+    (ctx, w, h) => ctx.drawImage(
+      video,
+      crop.x,
+      crop.y,
+      crop.width,
+      crop.height,
+      0,
+      0,
+      w,
+      h,
+    ),
+    crop.width,
+    crop.height,
+  );
   return encode(canvas, "camera");
+}
+
+export interface ImageRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+export interface SourceCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Map a visible target rectangle onto the source video using object-fit: cover
+ * and centered object-position. This keeps the captured still aligned with the
+ * viewfinder shown to the user instead of saving the uncropped sensor frame.
+ */
+export function sourceCropForFrame(
+  sourceWidth: number,
+  sourceHeight: number,
+  viewport: ImageRect,
+  target: ImageRect,
+): SourceCrop {
+  const left = Math.max(viewport.left, target.left);
+  const top = Math.max(viewport.top, target.top);
+  const right = Math.min(viewport.left + viewport.width, target.left + target.width);
+  const bottom = Math.min(viewport.top + viewport.height, target.top + target.height);
+  if (
+    sourceWidth <= 0 || sourceHeight <= 0 || viewport.width <= 0 || viewport.height <= 0 ||
+    right <= left || bottom <= top
+  ) {
+    return { x: 0, y: 0, width: sourceWidth, height: sourceHeight };
+  }
+
+  const scale = Math.max(viewport.width / sourceWidth, viewport.height / sourceHeight);
+  const renderedWidth = sourceWidth * scale;
+  const renderedHeight = sourceHeight * scale;
+  const sourceX = ((left - viewport.left) + (renderedWidth - viewport.width) / 2) / scale;
+  const sourceY = ((top - viewport.top) + (renderedHeight - viewport.height) / 2) / scale;
+  const sourceRight = sourceX + (right - left) / scale;
+  const sourceBottom = sourceY + (bottom - top) / scale;
+  const x = Math.max(0, Math.min(sourceWidth, sourceX));
+  const y = Math.max(0, Math.min(sourceHeight, sourceY));
+  const cropRight = Math.max(x, Math.min(sourceWidth, sourceRight));
+  const cropBottom = Math.max(y, Math.min(sourceHeight, sourceBottom));
+
+  return { x, y, width: cropRight - x, height: cropBottom - y };
 }
 
 /**

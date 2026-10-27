@@ -21,7 +21,7 @@ export interface Studio {
   setObjective: (v: string) => void;
   startCamera: () => Promise<void>;
   stopCamera: () => void;
-  capture: () => Promise<void>;
+  capture: (captureFrame?: HTMLElement | null) => Promise<void>;
   selectFile: (file: File) => Promise<void>;
   removeImage: () => void;
   analyze: () => Promise<void>;
@@ -68,11 +68,11 @@ export function useStudio(): Studio {
     setStatus(image ? "captured" : "idle");
   }, [camera, image]);
 
-  const capture = useCallback(async () => {
+  const capture = useCallback(async (captureFrame?: HTMLElement | null) => {
     const v = camera.videoRef.current;
     if (!v) return;
     try {
-      const snap = await captureFromVideo(v);
+      const snap = await captureFromVideo(v, captureFrame);
       setImage(snap);
       camera.stop(); // pause the stream once we have the still
       setResult(null);

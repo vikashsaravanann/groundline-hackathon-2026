@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect, useRef, useState } from "react";
 import { Camera, CircleStop, RefreshCw, SwitchCamera, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/design/Button";
@@ -13,14 +14,59 @@ export function CameraPanel({ studio }: { studio: Studio }) {
   // Destructure the ref into its own binding so reads of the other camera
   // members aren't flagged as ref access during render.
   const { active, hasMultipleCameras, videoRef, switchCamera } = camera;
+  const panelRef = useRef<HTMLElement>(null);
+  const captureFrameRef = useRef<HTMLDivElement>(null);
+  const [frameAspect, setFrameAspect] = useState(4 / 3);
+  const [previewSize, setPreviewSize] = useState<{ width: number; height: number } | null>(null);
   const showVideo = active && !image;
   const showPreview = image !== null;
   const requesting = status === "requesting-camera";
   const cameraError = status === "error" && !image ? studio.error : null;
   const showConsent = !showVideo && !showPreview && !requesting;
 
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const updateSize = () => {
+      const style = window.getComputedStyle(panel);
+      const horizontalPadding =
+        Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight);
+      const availableWidth = panel.clientWidth - horizontalPadding;
+      if (availableWidth <= 0) return;
+
+      const aspect = image ? image.width / image.height : frameAspect;
+      const maxHeight = Math.min(window.innerHeight * 0.68, 680);
+      let width = availableWidth;
+      let height = width / aspect;
+      if (height > maxHeight) {
+        height = maxHeight;
+        width = height * aspect;
+      }
+      setPreviewSize({ width: Math.round(width), height: Math.round(height) });
+    };
+
+    updateSize();
+    const observer = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(updateSize);
+    observer?.observe(panel);
+    window.addEventListener("resize", updateSize);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", updateSize);
+    };
+  }, [frameAspect, image]);
+
+  const updateVideoAspect = (video: HTMLVideoElement) => {
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      setFrameAspect(video.videoWidth / video.videoHeight);
+    }
+  };
+
   return (
     <section
+      ref={panelRef}
       aria-label="Capture"
       className="glass-panel flex flex-col gap-4 rounded-[28px] p-5 sm:p-6"
     >
@@ -37,18 +83,28 @@ export function CameraPanel({ studio }: { studio: Studio }) {
       </div>
 
       {/* Viewport */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-line bg-cloud">
+      <div
+        className="relative mx-auto aspect-[4/3] w-full overflow-hidden rounded-2xl border border-line bg-cloud"
+        style={previewSize ? { width: previewSize.width, height: previewSize.height } : undefined}
+      >
         {/* Always mounted so the ref is stable before the stream attaches. */}
         <video
           ref={videoRef}
           playsInline
           muted
           aria-label="Live camera preview"
+          onLoadedMetadata={(event) => updateVideoAspect(event.currentTarget)}
+          onResize={(event) => updateVideoAspect(event.currentTarget)}
           className={cn("h-full w-full object-cover", showVideo ? "block" : "hidden")}
         />
 
         {showVideo && (
-          <div aria-hidden className="pointer-events-none absolute inset-6 rounded-xl border-2 border-dashed border-white/70" />
+          <div
+            ref={captureFrameRef}
+            data-capture-frame
+            aria-hidden
+            className="pointer-events-none absolute inset-6 rounded-xl border-2 border-dashed border-white/70"
+          />
         )}
 
         {showPreview && (
@@ -113,7 +169,7 @@ export function CameraPanel({ studio }: { studio: Studio }) {
 
         {showVideo && (
           <div className="flex flex-wrap gap-2">
-            <Button onClick={studio.capture} className="flex-1">
+            <Button onClick={() => studio.capture(captureFrameRef.current)} className="flex-1">
               <Camera className="h-4 w-4" />
               Capture snapshot
             </Button>
