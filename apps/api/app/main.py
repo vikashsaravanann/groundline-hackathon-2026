@@ -1,15 +1,29 @@
 import base64
 import binascii
 import json
+import logging
 import os
+import time
+import uuid
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 
 from app import meta_client
 
 app = FastAPI(title="Groundline API", version="0.1.0")
+
+# Request tracing for the model path. The log line carries the model id, the
+# reasoning effort used, token counts, elapsed time, status, and a running cost
+# estimate — but never the API key, the image bytes, the image data URL, or any
+# user-supplied text. The objective's length is logged, not the objective.
+logger = logging.getLogger("groundline.analyze")
+
+# Running spend estimate from token counts, so cost is visible in the logs
+# without opening the billing page. Only live calls accumulate; MOCK calls cost
+# nothing and are logged with their notional fixture cost but not added here.
+_cumulative_live_cost_usd = 0.0
 
 
 def _parse_origins(raw: str) -> list[str]:
@@ -197,23 +211,68 @@ def _facts_from_text(text: str) -> tuple[list[Fact], float]:
 
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
-def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
+def analyze(req: AnalyzeRequest, response: Response) -> AnalyzeResponse:
     """Ground the visible facts in a single still image against an objective.
 
     The response always carries ``mode`` (rule 7): "MOCK" when served from a
     fixture, "live" when it came from the model. No credential is ever returned.
+
+    Every call is traced with a correlation ID (also returned as the
+    ``X-Correlation-ID`` header) and a cost estimate; see the module logger.
     """
+    global _cumulative_live_cost_usd
+
+    cid = uuid.uuid4().hex[:12]
+    response.headers["X-Correlation-ID"] = cid
+    effort = meta_client.DEFAULT_EFFORT
+    objective_len = len(req.objective)
+    started = time.monotonic()
+
     data_url = (
         req.image_base64
         if req.image_base64.startswith("data:")
         else f"data:{req.mime_type};base64,{req.image_base64}"
     )
     model_input = meta_client.build_image_input(data_url, req.objective)
+
     try:
-        result = meta_client.call_model(input=model_input)
+        result = meta_client.call_model(input=model_input, effort=effort)
     except meta_client.MetaClientError as exc:
-        # exc messages never contain the key (enforced in meta_client).
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        # Log the exception type only — never the message, image, or objective.
+        logger.warning(
+            "analyze cid=%s status=error effort=%s objective_len=%d "
+            "elapsed_ms=%d error=%s",
+            cid,
+            effort,
+            objective_len,
+            elapsed_ms,
+            type(exc).__name__,
+        )
         raise HTTPException(status_code=502, detail=f"model request failed: {exc}")
+
+    elapsed_ms = int((time.monotonic() - started) * 1000)
+    request_cost = result.usage.estimated_cost_usd
+    if result.mode == "live":
+        _cumulative_live_cost_usd += request_cost
+
+    logger.info(
+        "analyze cid=%s mode=%s model=%s effort=%s in_tok=%d out_tok=%d "
+        "total_tok=%d status=%s objective_len=%d elapsed_ms=%d "
+        "req_cost_usd=%.6f cum_live_cost_usd=%.6f",
+        cid,
+        result.mode,
+        result.model,
+        effort,
+        result.usage.input_tokens,
+        result.usage.output_tokens,
+        result.usage.total_tokens,
+        result.status,
+        objective_len,
+        elapsed_ms,
+        request_cost,
+        _cumulative_live_cost_usd,
+    )
 
     facts, overall = _facts_from_text(result.text)
     return AnalyzeResponse(

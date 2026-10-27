@@ -5,6 +5,7 @@ client that replays the recorded fixture, so the credential-leak and payload
 assertions run without spending a token.
 """
 import base64
+import logging
 import socket
 
 import pytest
@@ -245,3 +246,45 @@ def test_exception_messages_never_contain_key(monkeypatch):
         meta_client.call_model(input="x")
     assert SENTINEL_KEY not in str(excinfo.value)
     assert "Bearer" not in str(excinfo.value)
+
+
+# --- request tracing --------------------------------------------------------
+
+
+def test_trace_logs_length_not_objective_and_sets_correlation_id(monkeypatch, caplog):
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    monkeypatch.setenv("GROUNDLINE_FORCE_MOCK", "1")
+    secret_objective = "SECRET-OBJECTIVE-TEXT-must-not-be-logged-verbatim"
+
+    with caplog.at_level(logging.INFO, logger="groundline.analyze"):
+        r = client.post("/api/analyze", json=_valid_request(objective=secret_objective))
+
+    assert r.status_code == 200
+    assert r.headers.get("X-Correlation-ID")  # correlation id returned
+
+    line = "\n".join(rec.getMessage() for rec in caplog.records)
+    assert "analyze cid=" in line
+    assert "mode=MOCK" in line
+    assert f"objective_len={len(secret_objective)}" in line
+    # The objective text itself must never appear in a log line.
+    assert secret_objective not in line
+    for forbidden in ("Bearer", "LLM_", "MODEL_API_KEY"):
+        assert forbidden not in line
+
+
+def test_trace_accumulates_cost_on_live_without_leaking(monkeypatch, caplog):
+    monkeypatch.setenv("MODEL_API_KEY", SENTINEL_KEY)
+    monkeypatch.delenv("GROUNDLINE_FORCE_MOCK", raising=False)
+    monkeypatch.setattr(meta_client.httpx, "Client", _FakeClient)
+
+    with caplog.at_level(logging.INFO, logger="groundline.analyze"):
+        r = client.post("/api/analyze", json=_valid_request())
+
+    assert r.status_code == 200
+    line = "\n".join(rec.getMessage() for rec in caplog.records)
+    assert "mode=live" in line
+    assert "req_cost_usd=" in line and "cum_live_cost_usd=" in line
+    assert "total_tok=391" in line  # from the recorded fixture
+    assert SENTINEL_KEY not in line
+    for forbidden in ("Bearer", "LLM_"):
+        assert forbidden not in line
