@@ -275,7 +275,11 @@ def test_trace_logs_length_not_objective_and_sets_correlation_id(monkeypatch, ca
 
     assert r.status_code == 200
     assert r.headers.get("X-Correlation-ID")  # correlation id returned
-    assert "x-correlation-id" in r.headers.get("access-control-expose-headers", "").lower()
+    exposed_headers = {
+        header.strip().lower()
+        for header in r.headers.get("access-control-expose-headers", "").split(",")
+    }
+    assert "x-correlation-id" in exposed_headers
 
     line = "\n".join(rec.getMessage() for rec in caplog.records)
     assert "analyze cid=" in line
