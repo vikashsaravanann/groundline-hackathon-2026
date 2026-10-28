@@ -14,6 +14,7 @@ interface RawUsage {
 }
 
 interface RawAnalyze {
+  status?: unknown;
   mode?: unknown;
   model?: unknown;
   facts?: unknown;
@@ -21,6 +22,7 @@ interface RawAnalyze {
   target_found?: unknown;
   target_region?: unknown;
   target_phrase?: unknown;
+  refusal_message?: unknown;
 }
 
 /**
@@ -31,7 +33,8 @@ interface RawAnalyze {
  */
 export function normalizeAnalyze(raw: unknown, correlationId: string): AnalysisResult {
   const r = (raw ?? {}) as RawAnalyze;
-  const source = r.mode === "live" ? "meta-live" : "mock";
+  const source = r.mode === "live" ? "meta-live" : r.mode === "MOCK" ? "mock" : "unavailable";
+  const refused = r.status === "refused";
 
   const rawFacts = Array.isArray(r.facts) ? (r.facts as RawFact[]) : [];
   const fields: AnalysisField[] = rawFacts.map((f, i) => {
@@ -68,8 +71,11 @@ export function normalizeAnalyze(raw: unknown, correlationId: string): AnalysisR
   return {
     analysisId: correlationId || randomId(),
     source,
-    status: "completed",
-    summary: buildSummary(fields.length, detectedObject),
+    status: refused ? "refused" : "completed",
+    refusalMessage: refused && typeof r.refusal_message === "string" ? r.refusal_message : null,
+    summary: refused && typeof r.refusal_message === "string"
+      ? r.refusal_message
+      : buildSummary(fields.length, detectedObject),
     detectedObject,
     fields,
     cautions:

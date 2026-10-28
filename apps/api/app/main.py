@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import time
 import uuid
 from pathlib import Path
@@ -228,6 +229,7 @@ class FractionalRegionResponse(BaseModel):
 
 
 class AnalyzeResponse(BaseModel):
+    status: str = "completed"
     mode: str
     model: str
     objective_length: int
@@ -238,6 +240,34 @@ class AnalyzeResponse(BaseModel):
     target_found: bool
     target_region: FractionalRegionResponse | None
     target_phrase: str | None = None
+    refusal_message: str | None = None
+
+
+def _out_of_scope_refusal(objective: str) -> tuple[str, str] | None:
+    """Return a designed refusal before any model provider is invoked."""
+    normalized = re.sub(r"\s+", " ", objective.casefold()).strip()
+    medical_document = re.search(
+        r"\b(medical|prescription|patient|clinical|diagnos(?:e|is|ing)|dosage|blood test|lab result)\b",
+        normalized,
+    )
+    if medical_document and re.search(
+        r"\b(document|record|prescription|diagnos(?:e|is|ing)|interpret|explain|read|advice|result)\b",
+        normalized,
+    ):
+        return (
+            "OUT_OF_SCOPE_MEDICAL",
+            "Groundline cannot interpret medical documents or provide medical guidance. Please consult a qualified medical professional. This request was not sent to an AI provider.",
+        )
+    electrical_work = re.search(r"\b(electrical|electric|wiring|wire|mains)\b", normalized)
+    repair_guidance = re.search(
+        r"\b(repair|fix|guidance|instructions|how to|rewire|troubleshoot)\b", normalized
+    )
+    if electrical_work and repair_guidance:
+        return (
+            "OUT_OF_SCOPE_ELECTRICAL_REPAIR",
+            "Groundline cannot provide electrical wiring repair guidance. Electrical work can be dangerous; consult a qualified electrician. This request was not sent to an AI provider.",
+        )
+    return None
 
 
 def _recorded_sam_target(raw_image: bytes, mime_type: str):
@@ -405,6 +435,31 @@ def analyze(req: AnalyzeRequest, response: Response) -> AnalyzeResponse:
     objective_len = len(req.objective)
     started = time.monotonic()
 
+    refusal = _out_of_scope_refusal(req.objective)
+    if refusal is not None:
+        code, message = refusal
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        logger.info(
+            "analyze cid=%s status=refused code=%s objective_len=%d elapsed_ms=%d",
+            cid, code, objective_len, elapsed_ms,
+        )
+        return AnalyzeResponse(
+            status="refused",
+            mode="UNAVAILABLE",
+            model="none",
+            objective_length=objective_len,
+            facts=[],
+            overall_confidence=0.0,
+            usage=UsageModel(
+                input_tokens=0, output_tokens=0, total_tokens=0, estimated_cost_usd=0.0
+            ),
+            elapsed_ms=elapsed_ms,
+            target_found=False,
+            target_region=None,
+            target_phrase=None,
+            refusal_message=message,
+        )
+
     data_url = (
         req.image_base64
         if req.image_base64.startswith("data:")
@@ -470,6 +525,7 @@ def analyze(req: AnalyzeRequest, response: Response) -> AnalyzeResponse:
             estimated_cost_usd=request_cost,
         ),
         elapsed_ms=result.elapsed_ms,
+        status="completed",
         target_found=target_region is not None,
         target_region=(
             FractionalRegionResponse(**target_region.__dict__)
@@ -547,6 +603,7 @@ async def ground(
         status = (
             "mock_unavailable" if result is None and forced_mock
             else "no_match" if result is not None and not result.objects
+            else "multiple_candidates" if result is not None and len(result.objects) > 1
             else "completed"
         )
         objects: list[GroundObjectResponse] = []

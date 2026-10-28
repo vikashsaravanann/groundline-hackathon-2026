@@ -31,6 +31,8 @@ export function GroundingPanel({ studio }: { studio: Studio }) {
     ? "No match"
     : groundingStatus === "mock-unavailable"
       ? "Fixture unavailable"
+        : groundingStatus === "multiple-candidates"
+          ? `${groundingResult?.objects.length ?? 0} candidates — select one`
       : groundingStatus === "completed"
         ? `${groundingResult?.objects.length ?? 0} object${groundingResult?.objects.length === 1 ? "" : "s"}`
         : null;
@@ -101,6 +103,7 @@ export function GroundingPanel({ studio }: { studio: Studio }) {
           {groundingStatus === "ready" && <p className="text-xs text-muted">Grounding has not been submitted yet.</p>}
           {inProgress && <p role="status" className="text-sm text-ink-soft">Waiting for the bounded grounding response. Public requests use MOCK; an explicitly configured restricted LIVE request may use model credit.</p>}
           {groundingStatus === "no-match" && <p role="status" className="rounded-2xl bg-cloud p-4 text-sm text-ink-soft">No matching object was found. Try a more specific description or select another target.</p>}
+          {groundingStatus === "multiple-candidates" && <p role="status" className="rounded-2xl bg-cloud p-4 text-sm text-ink-soft">Multiple candidates were found. Choose the intended region below; no candidate is highlighted on the capture until you select one.</p>}
           {groundingStatus === "mock-unavailable" && <p role="status" className="rounded-2xl bg-purple-light/40 p-4 text-sm text-ink-soft">This public service is in MOCK mode. Its sample mask is available only for the matching synthetic desk-lamp scene; no live detection was made for this image.</p>}
           {groundingError && <GroundingError error={groundingError} />}
 

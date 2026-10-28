@@ -26,11 +26,11 @@ export function CameraPanel({ studio }: { studio: Studio }) {
   const requesting = status === "requesting-camera";
   const cameraError = status === "error" && !image ? studio.error : null;
   const showConsent = !showVideo && !showPreview && !requesting;
-  const liveGroundingSelection = studio.groundingStatus === "completed"
+  const liveGroundingSelection = ["completed", "multiple-candidates"].includes(studio.groundingStatus)
     ? studio.groundingResult?.objects.find((item) => item.objectId === studio.selectedGroundingObjectId)
       ?? null
     : null;
-  const useGroundingOutcome = ["completed", "no-match", "mock-unavailable"].includes(studio.groundingStatus);
+  const useGroundingOutcome = ["completed", "no-match", "mock-unavailable", "multiple-candidates"].includes(studio.groundingStatus);
   const activeRegion = useGroundingOutcome
     ? liveGroundingSelection?.box ?? null
     : studio.result?.targetFound
@@ -185,7 +185,13 @@ export function CameraPanel({ studio }: { studio: Studio }) {
         )}
       </div>
 
-      {showPreview && studio.result && !activeRegion && (
+      {showPreview && studio.result && studio.groundingStatus === "multiple-candidates" && !activeRegion && (
+        <p role="status" className="text-center text-sm font-semibold text-ink">
+          Multiple candidates — select one to highlight.
+        </p>
+      )}
+
+      {showPreview && studio.result && !activeRegion && studio.groundingStatus !== "multiple-candidates" && (
         <p role="status" className="text-center text-sm font-semibold text-ink">
           Target not found — no region is highlighted.
         </p>

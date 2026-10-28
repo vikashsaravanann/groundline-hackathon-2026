@@ -1,0 +1,13 @@
+{
+  "provenance": "SYNTHETIC_OFFLINE_FIXTURE",
+  "model_response": false,
+  "case": "two_similar_labels",
+  "description": "Two similar labels. Both candidates are returned and selection remains with the user.",
+  "mime_type": "image/png",
+  "image_width": 640,
+  "image_height": 420,
+  "image_sha256": "c1f8d1e20f25259542ac074d712c426d91a0db79d986f05cbe4247c591b621fb",
+  "target_phrase": "printed product label",
+  "expected_pipeline_outcome": "multiple_candidates",
+  "output_text": "<0f>0<|box;x1=33;y1=123;x2=286;y2=301;w=640;h=420|><|mask;x=0;y=0;data=4,4,!!!!!'y80v-)c|>1<|box;x1=354;y1=123;x2=606;y2=301;w=640;h=420|><|mask;x=0;y=0;data=4,4,!!!!!'y80v-)c|>"
+}

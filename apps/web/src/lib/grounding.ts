@@ -71,7 +71,9 @@ export function normalizeGrounding(
     mode: r.mode,
     provider: typeof r.provider === "string" ? r.provider : "unknown",
     model: typeof r.model === "string" ? r.model : "unknown",
-    status: r.status === "no_match" || r.status === "mock_unavailable" ? r.status : "completed",
+    status: objects.length > 1
+      ? "multiple_candidates"
+      : r.status === "no_match" || r.status === "mock_unavailable" ? r.status : "completed",
     imageWidth: expected.width,
     imageHeight: expected.height,
     imageSha256: expected.sha256,
@@ -92,13 +94,22 @@ export async function groundImage({
   if (!API_BASE) {
     throw new ApiError("network", "The Groundline API is not configured.", "Configure the HTTPS API origin and rebuild.");
   }
-  const localSha = await sha256Base64(base64);
   const controller = new AbortController();
   let timedOut = false;
-  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, GROUND_TIMEOUT_MS);
   const abortFromCaller = () => controller.abort();
   signal?.addEventListener("abort", abortFromCaller, { once: true });
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, GROUND_TIMEOUT_MS);
   try {
+    if (signal?.aborted) {
+      throw new ApiError("unknown", "The grounding request was cancelled.", "Start grounding again when ready.");
+    }
+    const localSha = await sha256Base64(base64);
+    if (timedOut) {
+      throw new ApiError("timeout", "Grounding timed out.", "Confirm whether the prior request ended before retrying.");
+    }
+    if (signal?.aborted || controller.signal.aborted) {
+      throw new ApiError("unknown", "The grounding request was cancelled.", "Start grounding again when ready.");
+    }
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (accessToken) headers["X-Groundline-Access-Token"] = accessToken;
     let response: Response;

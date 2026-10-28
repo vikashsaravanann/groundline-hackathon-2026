@@ -173,6 +173,10 @@ export function useStudio(): Studio {
 
   const analyze = useCallback(async () => {
     if (!image || !objectiveValid) return;
+    // A fresh analysis invalidates both an older analysis and any SAM request
+    // associated with its image/target before new work starts.
+    abortRef.current?.abort();
+    clearGrounding();
     const seq = ++requestSeq.current;
     const controller = new AbortController();
     abortRef.current = controller;
@@ -242,8 +246,11 @@ export function useStudio(): Studio {
     }
     const sequence = ++groundingSeq.current;
     const sourceImage = image;
+    groundingAbortRef.current?.abort();
     const controller = new AbortController();
     groundingAbortRef.current = controller;
+    setGroundingResult(null);
+    setSelectedGroundingObjectId(null);
     setGroundingStatus("grounding");
     setGroundingError(null);
     try {
@@ -258,8 +265,13 @@ export function useStudio(): Studio {
       });
       if (sequence !== groundingSeq.current || imageRef.current?.base64 !== sourceImage.base64 || targetPhraseRef.current.trim() !== phrase) return;
       setGroundingResult(grounded);
-      setSelectedGroundingObjectId(grounded.objects[0]?.objectId ?? null);
-      setGroundingStatus(grounded.status === "no_match" ? "no-match" : grounded.status === "mock_unavailable" ? "mock-unavailable" : "completed");
+      setSelectedGroundingObjectId(grounded.objects.length === 1 ? grounded.objects[0].objectId : null);
+      setGroundingStatus(
+        grounded.status === "no_match" ? "no-match"
+          : grounded.status === "mock_unavailable" ? "mock-unavailable"
+            : grounded.status === "multiple_candidates" ? "multiple-candidates"
+              : "completed",
+      );
     } catch (err) {
       if (sequence !== groundingSeq.current) return;
       const failure: StudioError = err instanceof ApiError

@@ -202,5 +202,65 @@ def test_live_adapter_uses_one_authenticated_sam_request_and_never_leaks_key(mon
     assert SENTINEL not in repr(result)
 
 
+def test_live_adapter_retries_only_one_pre_connection_failure(monkeypatch):
+    image = load_image()
+    line = _line_with_objects(boxes=[(190, 105, 476, 525, "lamp")])
+    events = list(pytest.importorskip("asyncio").run(_collect(_sse_response(line))))
+    attempts = {"count": 0}
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            attempts["count"] += 1
+            if attempts["count"] == 1:
+                raise sam_client.httpx.ConnectError(
+                    "connect failed", request=sam_client.httpx.Request("POST", sam_client.BASE_URL + sam_client.PATH)
+                )
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        def stream(self, *args, **kwargs):
+            return FakeStreamResponse(events)
+
+    monkeypatch.setattr(sam_client.httpx, "AsyncClient", FakeAsyncClient)
+    result = pytest.importorskip("asyncio").run(
+        sam_client.complete_live(image=image, target_phrase="desk lamp", api_key=SENTINEL)
+    )
+    assert attempts["count"] == 2
+    assert result.objects
+
+
+def test_live_adapter_times_out_without_retrying_uncertain_completion(monkeypatch):
+    import asyncio
+
+    image = load_image()
+    attempts = {"count": 0}
+
+    class SlowAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            attempts["count"] += 1
+            await asyncio.sleep(0.02)
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(sam_client.httpx, "AsyncClient", SlowAsyncClient)
+    with pytest.raises(sam_client.GroundingTimeoutError, match="not retried"):
+        asyncio.run(
+            sam_client.complete_live(
+                image=image, target_phrase="desk lamp", api_key=SENTINEL, timeout=0.001
+            )
+        )
+    assert attempts["count"] == 1
+
+
 async def _collect(iterator):
     return [item async for item in iterator]

@@ -8,6 +8,7 @@ export type StudioStatus =
   | "validating"
   | "analyzing"
   | "completed"
+  | "multiple-candidates"
   | "error";
 
 export type CameraPermission =
@@ -50,6 +51,7 @@ export type GroundingStatus =
   | "ready"
   | "grounding"
   | "completed"
+  | "multiple-candidates"
   | "no-match"
   | "mock-unavailable"
   | "error"

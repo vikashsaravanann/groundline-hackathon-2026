@@ -5,6 +5,7 @@ provider package remains responsible only for its specialized mask encoding.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import json
@@ -341,23 +342,28 @@ async def parse_event_source(
 
 
 def mock_fixture_for(image: ValidatedImage, target_phrase: str) -> dict[str, Any] | None:
-    """Return the single synthetic grounding fixture only for its exact image and prompt."""
+    """Return a synthetic fixture only for its exact image and target phrase."""
     from pathlib import Path
 
-    fixture_path = Path(__file__).resolve().parent.parent / "fixtures" / "sam31_synthetic_response.json"
-    try:
-        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    if (
-        fixture.get("provenance") != "SYNTHETIC_OFFLINE_FIXTURE"
-        or fixture.get("image_sha256") != image.sha256
-        or fixture.get("target_phrase") != validate_target_phrase(target_phrase)
-        or fixture.get("image_width") != image.width
-        or fixture.get("image_height") != image.height
-    ):
-        return None
-    return fixture
+    fixture_root = Path(__file__).resolve().parent.parent / "fixtures"
+    paths = [fixture_root / "sam31_synthetic_response.json"]
+    paths.extend(sorted((fixture_root / "adversarial").glob("*.json")))
+    phrase = validate_target_phrase(target_phrase)
+    for fixture_path in paths:
+        try:
+            fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if (
+            fixture.get("provenance") == "SYNTHETIC_OFFLINE_FIXTURE"
+            and fixture.get("image_sha256") == image.sha256
+            and fixture.get("target_phrase") == phrase
+            and fixture.get("image_width") == image.width
+            and fixture.get("image_height") == image.height
+            and isinstance(fixture.get("output_text"), str)
+        ):
+            return fixture
+    return None
 
 
 async def parse_mock_fixture(
@@ -389,7 +395,7 @@ async def parse_mock_fixture(
 
 async def complete_live(
     *, image: ValidatedImage, target_phrase: str, api_key: str | None = None,
-    timeout: float = 60.0,
+    timeout: float = 45.0,
 ) -> GroundingResult:
     key = api_key or os.environ.get(API_KEY_ENV)
     if not key:
@@ -399,54 +405,69 @@ async def complete_live(
     started = time.monotonic()
     response_id: str | None = None
     completed = False
-    try:
-        async with httpx.AsyncClient(base_url=BASE_URL, timeout=timeout_config) as client:
-            async with client.stream(
-                "POST",
-                PATH,
-                json=payload,
-                headers={
-                    "Authorization": f"Bearer {key}",
-                    "Content-Type": "application/json",
-                    "Accept": "text/event-stream",
-                },
-            ) as response:
-                if response.status_code >= 400:
-                    status = response.status_code
-                    if status in (401, 403):
-                        raise GroundingTransportError(
-                            f"Meta SAM authentication or model entitlement rejected (HTTP {status})"
+    result: GroundingResult | None = None
+    # A single retry is allowed only for failures before a connection is
+    # established. Never retry a read/overall timeout: Meta may have processed
+    # and billed the request even if the client did not receive its response.
+    for attempt in range(2):
+        response_id = None
+        completed = False
+        try:
+            async with asyncio.timeout(timeout):
+                async with httpx.AsyncClient(base_url=BASE_URL, timeout=timeout_config) as client:
+                    async with client.stream(
+                        "POST",
+                        PATH,
+                        json=payload,
+                        headers={
+                            "Authorization": f"Bearer {key}",
+                            "Content-Type": "application/json",
+                            "Accept": "text/event-stream",
+                        },
+                    ) as response:
+                        if response.status_code >= 400:
+                            status = response.status_code
+                            if status in (401, 403):
+                                raise GroundingTransportError(
+                                    f"Meta SAM authentication or model entitlement rejected (HTTP {status})"
+                                )
+                            if status == 429:
+                                raise GroundingTransportError("Meta SAM rate limit reached (HTTP 429)")
+                            raise GroundingTransportError(f"Meta SAM request failed (HTTP {status})")
+
+                        async def events() -> AsyncIterator[dict[str, Any]]:
+                            nonlocal response_id, completed
+                            async for event in _sse_events(response):
+                                if event["type"] == "response.completed":
+                                    body = event.get("response")
+                                    if not isinstance(body, dict) or body.get("status") != "completed":
+                                        raise GroundingResponseError("SAM did not complete the response")
+                                    candidate = body.get("id")
+                                    response_id = candidate if isinstance(candidate, str) else None
+                                    completed = True
+                                yield event
+
+                        result = await parse_event_source(
+                            events(), image=image, target_phrase=target_phrase
                         )
-                    if status == 429:
-                        raise GroundingTransportError("Meta SAM rate limit reached (HTTP 429)")
-                    raise GroundingTransportError(f"Meta SAM request failed (HTTP {status})")
+            break
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            if attempt == 0:
+                continue
+            raise GroundingTransportError("Meta SAM connection failed after one safe retry") from exc
+        except (asyncio.TimeoutError, httpx.TimeoutException) as exc:
+            raise GroundingTimeoutError(
+                "Meta SAM request timed out; its upstream completion is uncertain, so it was not retried"
+            ) from exc
+        except GroundingError:
+            raise
+        except httpx.HTTPError as exc:
+            raise GroundingTransportError(f"Meta SAM transport failed ({type(exc).__name__})") from exc
+        except Exception as exc:
+            # Parser exception text can contain provider output; keep it out of logs/errors.
+            raise GroundingResponseError(f"SAM response could not be parsed ({type(exc).__name__})") from exc
 
-                async def events() -> AsyncIterator[dict[str, Any]]:
-                    nonlocal response_id, completed
-                    async for event in _sse_events(response):
-                        if event["type"] == "response.completed":
-                            body = event.get("response")
-                            if not isinstance(body, dict) or body.get("status") != "completed":
-                                raise GroundingResponseError("SAM did not complete the response")
-                            candidate = body.get("id")
-                            response_id = candidate if isinstance(candidate, str) else None
-                            completed = True
-                        yield event
-
-                result = await parse_event_source(
-                    events(), image=image, target_phrase=target_phrase
-                )
-    except GroundingError:
-        raise
-    except httpx.TimeoutException as exc:
-        raise GroundingTimeoutError("Meta SAM request timed out; do not automatically retry") from exc
-    except httpx.HTTPError as exc:
-        raise GroundingTransportError(f"Meta SAM transport failed ({type(exc).__name__})") from exc
-    except Exception as exc:
-        # Parser exception text can contain provider output; keep it out of logs/errors.
-        raise GroundingResponseError(f"SAM response could not be parsed ({type(exc).__name__})") from exc
-
-    if not completed:
+    if not completed or result is None:
         raise GroundingResponseError("SAM stream ended before response.completed")
     return GroundingResult(
         model=MODEL_ID,

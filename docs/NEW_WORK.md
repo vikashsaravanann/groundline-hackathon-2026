@@ -173,3 +173,71 @@ published). No history rewrite, no force-push, no cloud changes.
   no backend files. Its `/healthz` GET returned HTTP 200 in MOCK mode.
 - HTTPS to the custom frontend hostname reset during TLS negotiation from this
   Mac, so public reachability through that hostname remains unverified here.
+# 2026-10-28 — SAM Adversarial Handling and Honest Failure States
+
+## Scope and evidence boundary
+
+Added five synthetic product-label images and matching synthetic SAM-format
+response fixtures in `apps/api/fixtures/adversarial/`. They are passed through
+the same `/api/ground` validation, MOCK fixture selection, SAM stream parser,
+geometry normalization, and response normalization used by the API. The
+sidecars explicitly set `model_response: false`: these results test how the
+application handles known cases and are **not observations from live SAM**.
+No paid model request was made for this check.
+
+Boxes below use inclusive source-image pixel coordinates (`x1,y1` through
+`x2,y2`) from those synthetic fixtures. For multiple candidates, the UI/API
+returns both and does not automatically select one. Out-of-frame coordinates
+are clipped by the parser before fractional geometry is returned.
+
+| Synthetic case | `/api/ground` outcome | Candidate boxes | Handling |
+| --- | --- | --- | --- |
+| Blurred label | `no_match` (HTTP 200) | None | Explicit no-match; no highlight is returned. |
+| Two similar labels | `multiple_candidates` (HTTP 200) | `(33,123)-(286,301)` and `(354,123)-(606,301)` | Both candidates are surfaced; neither is chosen automatically. |
+| Rotated image | `completed` (HTTP 200) | `(158,78)-(481,341)` | One fixture candidate, represented by an axis-aligned box around the visible rotated label. |
+| Target partly outside frame | `completed` (HTTP 200) | `(0,113)-(221,286)` | The visible candidate starts at the image edge; coordinates are within image bounds. |
+| Empty frame | `no_match` (HTTP 200) | None | Explicit no-match; no guessed region. |
+
+These fixture outcomes establish that the local pipeline does not turn the
+ambiguous or absent cases into a single confident box. They do not establish
+that live SAM will classify these five images identically; live prompt/model
+behavior still requires a separately authorized provider test.
+
+## Safety boundary tests
+
+Added tests for “Interpret this medical document” and “Give me electrical
+wiring repair guidance.” Both requests receive a designed HTTP 200 refusal
+response with `status: refused`, no extracted facts, zero model usage/cost,
+and text stating that the request was not sent to an AI provider. Tests replace
+the provider call with a failure sentinel, so a regression that routes either
+request to a model fails offline. The API refuses these objectives; the
+synthetic-only upload restriction remains in force.
+
+## Timeout, retry, cancellation, and loading
+
+The SAM adapter has a 45-second total request deadline and permits at most one
+retry only for a connection-establishment failure. A timeout or any failure
+after a connection/request may have reached Meta is not retried, because the
+provider may have completed or billed it. The UI request deadline remains
+bounded, displays its `grounding` progress status, and aborts the active
+grounding fetch when a fresh image analysis begins. Stale results are discarded.
+
+Offline adapter tests verified one retry after a pre-connection error and no
+retry after a short simulated timeout. No external network request was made by
+these tests.
+
+## End-to-end latency samples
+
+Measured local `TestClient` wall time for a full `/api/ground` HTTP request
+using the exact adversarial image bytes, including base64 JSON submission,
+image validation, exact-fixture lookup, SAM-format parser, and normalized JSON
+response. Configuration was `GROUNDLINE_FORCE_MOCK=1`; these timings exclude
+browser rendering, network transit, Render cold starts, and Meta inference.
+
+| Sample | Result | Local end-to-end wall time |
+| --- | --- | ---: |
+| Two similar labels | `multiple_candidates`, 2 objects | 21.278 ms |
+| Rotated image | `completed`, 1 object | 4.291 ms |
+| Empty frame | `no_match`, 0 objects | 2.674 ms |
+
+These are local MOCK-path measurements, not estimates of live SAM latency.

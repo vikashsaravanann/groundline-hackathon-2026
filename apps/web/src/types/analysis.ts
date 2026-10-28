@@ -2,7 +2,7 @@
 // into this shape (see lib/normalize.ts); the UI never assumes the model
 // produces this object directly.
 
-export type AnalysisSource = "meta-live" | "mock";
+export type AnalysisSource = "meta-live" | "mock" | "unavailable";
 
 export interface AnalysisField {
   id: string;
@@ -43,7 +43,8 @@ export interface AnalysisUsage {
 export interface AnalysisResult {
   analysisId: string;
   source: AnalysisSource;
-  status: "completed" | "partial";
+  status: "completed" | "partial" | "refused";
+  refusalMessage: string | null;
   summary: string;
   detectedObject: string | null;
   fields: AnalysisField[];

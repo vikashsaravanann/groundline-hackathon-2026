@@ -13,3 +13,8 @@
    credits are in use, Meta states content may be used for product improvement.
 7. A mocked path must announce itself as MOCK and must never be presented as a
    live model call.
+8. Medical-document interpretation and electrical-wiring repair guidance are
+   out of scope. The analyze endpoint returns a designed refusal before model
+   routing and states that the request was not sent to an AI provider. This
+   refusal does not permit uploading real medical records or other sensitive
+   material; synthetic data only remains in force.

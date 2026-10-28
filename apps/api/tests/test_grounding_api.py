@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -65,6 +66,40 @@ def test_mock_non_fixture_image_is_truthfully_unavailable(monkeypatch):
     assert body["status"] == "mock_unavailable"
     assert body["objects"] == []
     assert body["estimated_cost_usd"] == 0
+
+
+def test_five_adversarial_fixtures_report_no_match_or_explicit_candidates(monkeypatch):
+    monkeypatch.setenv("GROUNDLINE_FEATURE_GROUNDING_ENABLED", "1")
+    monkeypatch.setenv("GROUNDLINE_PROVIDER_IMAGE_GROUNDING", "meta-sam")
+    monkeypatch.setenv("GROUNDLINE_FORCE_MOCK", "1")
+    expected = {
+        "blurred_label": ("no_match", 0),
+        "two_similar_labels": ("multiple_candidates", 2),
+        "rotated_image": ("completed", 1),
+        "partly_outside_frame": ("completed", 1),
+        "empty_frame": ("no_match", 0),
+    }
+    for case, (expected_status, expected_count) in expected.items():
+        fixture_path = FIXTURES / "adversarial" / f"{case}.json"
+        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        image = (FIXTURES / "adversarial" / f"{case}.png").read_bytes()
+        response = client.post(
+            "/api/ground",
+            json=request_body(image_bytes=image, target=fixture["target_phrase"]),
+        )
+        assert response.status_code == 200, case
+        body = response.json()
+        assert body["mode"] == "MOCK", case
+        assert body["status"] == expected_status, case
+        assert len(body["objects"]) == expected_count, case
+        for obj in body["objects"]:
+            box = obj["box"]
+            assert 0 <= box["x"] <= 1 and 0 <= box["y"] <= 1
+            assert 0 < box["width"] <= 1 and 0 < box["height"] <= 1
+            assert box["x"] + box["width"] <= 1.000001
+            assert box["y"] + box["height"] <= 1.000001
+        if expected_status == "multiple_candidates":
+            assert body["objects"][0]["object_id"] != body["objects"][1]["object_id"]
 
 
 def test_feature_flag_is_off_by_default_and_returns_not_found(monkeypatch):

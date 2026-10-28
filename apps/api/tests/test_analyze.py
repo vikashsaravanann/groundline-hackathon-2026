@@ -258,6 +258,44 @@ def test_analyze_never_invents_region_for_unmatched_image(monkeypatch):
     assert response.json()["target_phrase"] is None
 
 
+@pytest.mark.parametrize(
+    ("objective", "expected_code", "expected_copy"),
+    [
+        (
+            "Interpret this medical document",
+            "OUT_OF_SCOPE_MEDICAL",
+            "cannot interpret medical documents",
+        ),
+        (
+            "Give me electrical wiring repair guidance",
+            "OUT_OF_SCOPE_ELECTRICAL_REPAIR",
+            "cannot provide electrical wiring repair guidance",
+        ),
+    ],
+)
+def test_out_of_scope_requests_return_designed_refusal_without_provider_call(
+    monkeypatch, objective, expected_code, expected_copy
+):
+    monkeypatch.setenv("GROUNDLINE_FORCE_MOCK", "0")
+    monkeypatch.setenv("MODEL_API_KEY", SENTINEL_KEY)
+
+    def provider_must_not_run(**kwargs):
+        raise AssertionError("out-of-scope request reached the model provider")
+
+    monkeypatch.setattr(provider_router, "call_model", provider_must_not_run)
+    response = client.post("/api/analyze", json=_valid_request(objective=objective))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "refused"
+    assert body["mode"] == "UNAVAILABLE"
+    assert body["model"] == "none"
+    assert body["facts"] == []
+    assert body["usage"]["estimated_cost_usd"] == 0
+    assert expected_copy in body["refusal_message"].lower()
+    assert "not sent to an AI provider" in body["refusal_message"]
+
+
 def test_force_mock_makes_no_network_call(monkeypatch):
     # With FORCE_MOCK=1 the adapter must never construct an httpx client, even
     # when a key is present.

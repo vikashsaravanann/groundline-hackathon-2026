@@ -25,7 +25,7 @@ export interface GroundingResult {
   mode: "live" | "MOCK";
   provider: string;
   model: string;
-  status: "completed" | "no_match" | "mock_unavailable";
+  status: "completed" | "no_match" | "mock_unavailable" | "multiple_candidates";
   imageWidth: number;
   imageHeight: number;
   imageSha256: string;

@@ -24,14 +24,21 @@ export function AnalysisPanel({ studio }: { studio: Studio }) {
     >
       <div className="flex flex-col items-center justify-center gap-2 text-center">
         <h2 className="text-base font-semibold text-ink">AI analysis</h2>
-        {showResult && <MockLiveBadge source={result.source} />}
+        {showResult && result.source !== "unavailable" && <MockLiveBadge source={result.source} />}
       </div>
 
       {analyzing && <LoadingState />}
 
       {showError && <AnalysisError error={error} onRetry={studio.analyze} />}
 
-      {showResult && (
+      {showResult && result.status === "refused" && (
+        <div role="status" className="flex flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-line bg-cloud/70 p-6 text-center">
+          <h3 className="text-base font-semibold text-ink">Request outside Groundline&apos;s scope</h3>
+          <p className="max-w-lg text-sm leading-relaxed text-ink-soft">{result.refusalMessage ?? result.summary}</p>
+        </div>
+      )}
+
+      {showResult && result.status !== "refused" && (
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <p className="text-sm leading-relaxed text-ink">{result.summary}</p>

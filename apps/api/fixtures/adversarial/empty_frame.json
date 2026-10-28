@@ -1,0 +1,13 @@
+{
+  "provenance": "SYNTHETIC_OFFLINE_FIXTURE",
+  "model_response": false,
+  "case": "empty_frame",
+  "description": "A blank frame without a label. Empty output tests explicit no-match handling.",
+  "mime_type": "image/png",
+  "image_width": 640,
+  "image_height": 420,
+  "image_sha256": "d5a49ba19c0e05affc6b220211f946a8df4b1518aca2bb844bfdd55964b9c908",
+  "target_phrase": "printed product label",
+  "expected_pipeline_outcome": "no_match",
+  "output_text": ""
+}

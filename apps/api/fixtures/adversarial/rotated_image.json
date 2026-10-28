@@ -1,0 +1,13 @@
+{
+  "provenance": "SYNTHETIC_OFFLINE_FIXTURE",
+  "model_response": false,
+  "case": "rotated_image",
+  "description": "The entire image is rotated. The synthetic response carries the axis-aligned visible extent.",
+  "mime_type": "image/png",
+  "image_width": 640,
+  "image_height": 420,
+  "image_sha256": "78f95f6de3186ffb38cf3fa53f2017c56695455017e890f6d50cc84c7b6aa081",
+  "target_phrase": "printed product label",
+  "expected_pipeline_outcome": "one_candidate",
+  "output_text": "<0f>0<|box;x1=158;y1=78;x2=481;y2=341;w=640;h=420|><|mask;x=0;y=0;data=4,4,!!!!!'y80v-)c|>"
+}

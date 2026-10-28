@@ -145,6 +145,50 @@ describe("useStudio", () => {
     expect(result.current.groundingStatus).toBe("ready");
   });
 
+  it("aborts an in-flight SAM request when the user re-analyzes", async () => {
+    vi.mocked(imageFromFile).mockResolvedValue(selected);
+    vi.mocked(analyzeImage).mockResolvedValue(analysis as never);
+    let groundingSignal: AbortSignal | undefined;
+    vi.mocked(groundImage).mockImplementation((_input) => {
+      groundingSignal = _input.signal;
+      return new Promise(() => undefined);
+    });
+
+    const { result } = renderHook(() => useStudio());
+    await act(async () => result.current.selectFile(new File(["synthetic"], "sample.png", { type: "image/png" })));
+    act(() => result.current.setObjective("Identify the visible label information"));
+    await act(async () => result.current.analyze());
+    act(() => { void result.current.ground(); });
+    expect(groundingSignal?.aborted).toBe(false);
+
+    await act(async () => result.current.analyze());
+    expect(groundingSignal?.aborted).toBe(true);
+    expect(result.current.groundingResult).toBeNull();
+    expect(result.current.groundingStatus).toBe("idle");
+  });
+
+  it("does not confidently preselect one of multiple grounding candidates", async () => {
+    vi.mocked(imageFromFile).mockResolvedValue(selected);
+    vi.mocked(analyzeImage).mockResolvedValue(analysis as never);
+    vi.mocked(groundImage).mockResolvedValue({
+      ...groundResult,
+      status: "multiple_candidates",
+      objects: [
+        { objectId: "0", label: "printed product label", box: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 }, mask: null, score: null },
+        { objectId: "1", label: "printed product label", box: { x: 0.6, y: 0.2, width: 0.3, height: 0.4 }, mask: null, score: null },
+      ],
+    });
+
+    const { result } = renderHook(() => useStudio());
+    await act(async () => result.current.selectFile(new File(["synthetic"], "sample.png", { type: "image/png" })));
+    act(() => result.current.setObjective("Identify the visible label information"));
+    await act(async () => result.current.analyze());
+    await act(async () => result.current.ground());
+
+    expect(result.current.groundingStatus).toBe("multiple-candidates");
+    expect(result.current.selectedGroundingObjectId).toBeNull();
+  });
+
   it("replaces an extracted value and records the model-to-human correction", async () => {
     vi.mocked(imageFromFile).mockResolvedValue(selected);
     vi.mocked(analyzeImage).mockResolvedValue(analysis as never);
