@@ -39,13 +39,27 @@ Meta's current instructions specify a short noun phrase, image `input_image`, `s
 - Browser: local Studio page opened and rendered. The browser upload automation was blocked because Chrome requires the extension setting “Allow access to file URLs”; that permission was not broadened. SVG geometry normalization is covered by a DOM test against an 800×600 viewBox, but visual browser E2E remains unverified.
 - The first check run caught an invalid target-phrase test case and React state-reset lint issue; both were corrected and the passing results above are after those fixes.
 - A `StarletteDeprecationWarning` about `httpx` in `TestClient` remains; the tests pass. Vite also reports its existing `configLoader: 'native'` compatibility warning.
-- Render/Vercel deployment and public-domain verification are pending publication.
+- Render and Vercel deployments are published for `9f2cc5ddfc82aba657fb443cf478bbe9bc107aea`; the public custom-domain TLS checks still fail from the participant Mac. See the dated release addendum below and `DAY3_FINAL_CHECKLIST.md`.
 
 ## Remaining Day 3 acceptance gates
 
 1. Repeat a controlled live SAM request only in a separately authorized run after the corrected payload is reviewed. Do not retry the failed HTTP 400 within this run.
 2. Visually verify a real returned mask against the synthetic source image.
 3. Provision and verify shared Redis quotas plus restricted token configuration before any LIVE service activation.
-4. Build and smoke-test the Docker image; publish through CI; verify Render and Vercel.
+4. Resolve the observed custom-domain TLS handshake resets and verify unauthenticated public browser access; complete browser overlay testing and Safari/Firefox checks.
+
+## Release addendum — 2026-10-28
+
+- GitHub main is `9f2cc5ddfc82aba657fb443cf478bbe9bc107aea`; the worktree is clean.
+- Frontend CI `40661419880` and Backend CI `40661419921` passed on the published commit.
+- Render automatically deployed the commit after CI checks passed: deployment `dep-dbgrlm2vcj2c73dom1dg`, status `live`. The service remains Docker / Free / Singapore with `/healthz`, and `checksPass` auto-deployment.
+- Production Render health GET returned HTTP 200 in MOCK mode. Production `POST /api/ground` returned HTTP 200 for the exact synthetic fixture, with source hash and dimensions, one synthetic fixture object, and estimated cost 0. No provider inference occurred.
+- CORS OPTIONS preflight from the intended frontend origin returned HTTP 200 with that exact origin.
+- Vercel's intended project dashboard showed the published commit's production deployment Ready and the frontend domain assigned to Production. The deployment's generated `vercel.app` URL is protected by SSO.
+- From the participant Mac, TLS connections to both custom hostnames reset before a peer certificate was presented. Provider dashboards report Vercel Valid Configuration and Render Verified / Certificate Issued for the API domain. No DNS/provider changes were made; independent mobile-network verification was unavailable.
+- The single allowed live SAM request had returned HTTP 400 earlier in this run and was not retried. The corrected payload is covered offline only. Live SAM entitlement and segmentation geometry remain unverified.
+- Browser upload-based visual overlay verification, Safari and Firefox remain outstanding. Production continues in forced MOCK mode.
+
+**Current verdict: DAY 3 ENGINEERING COMPLETE — LIVE VERIFICATION PENDING.**
 
 The synthetic fixture validates offline parser and UI behavior. It does not satisfy the live segmentation acceptance gate.
