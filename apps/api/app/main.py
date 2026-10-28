@@ -1,17 +1,19 @@
 import base64
 import binascii
+import hashlib
 import json
 import logging
 import os
 import time
 import uuid
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
-from app import grounding_security, meta_client, provider_router, sam_client
+from app import grounding_security, meta_client, provider_router, sam_client, sam_parser
 from app.model_types import Capability, ProviderError
 
 app = FastAPI(title="Groundline API", version="0.1.0")
@@ -216,6 +218,15 @@ class UsageModel(BaseModel):
     estimated_cost_usd: float
 
 
+class FractionalRegionResponse(BaseModel):
+    """Image-relative geometry; x/y/width/height each use a 0..1 scale."""
+
+    x: float
+    y: float
+    width: float
+    height: float
+
+
 class AnalyzeResponse(BaseModel):
     mode: str
     model: str
@@ -224,6 +235,30 @@ class AnalyzeResponse(BaseModel):
     overall_confidence: float
     usage: UsageModel
     elapsed_ms: int
+    target_found: bool
+    target_region: FractionalRegionResponse | None
+    target_phrase: str | None = None
+
+
+def _recorded_sam_target(raw_image: bytes, mime_type: str):
+    """Use authentic SAM evidence only for its exact recorded source image.
+
+    Analyze stays single-provider and safe for the public MOCK deployment: it
+    does not launch an implicit second, billable inference. Other images return
+    no target; the explicit /api/ground action handles new SAM requests.
+    """
+    expected_sha256 = "34a031a10d9910ea89141015600be473f3cb33933687e6e5cedc2934a202cbc4"
+    if hashlib.sha256(raw_image).hexdigest() != expected_sha256:
+        return None
+    try:
+        image = sam_client.validate_image(raw_image, mime_type)
+        raw_path = Path(__file__).resolve().parent.parent / "fixtures" / "sam31_prompt_white_rectangle.raw.txt"
+        boxes = sam_parser.parse_output_text(raw_path.read_text(encoding="utf-8"))
+    except (OSError, sam_client.GroundingValidationError):
+        return None
+    if not boxes or boxes[0].width != image.width or boxes[0].height != image.height:
+        return None
+    return sam_parser.to_image_fractions(boxes[0])
 
 
 MAX_GROUND_BASE64_CHARS = 5_600_100
@@ -420,6 +455,8 @@ def analyze(req: AnalyzeRequest, response: Response) -> AnalyzeResponse:
     )
 
     facts, overall = _facts_from_text(result.text)
+    raw_image = _decode_image_payload(req.image_base64)
+    target_region = _recorded_sam_target(raw_image, req.mime_type)
     return AnalyzeResponse(
         mode=result.mode,
         model=result.model,
@@ -433,6 +470,12 @@ def analyze(req: AnalyzeRequest, response: Response) -> AnalyzeResponse:
             estimated_cost_usd=request_cost,
         ),
         elapsed_ms=result.elapsed_ms,
+        target_found=target_region is not None,
+        target_region=(
+            FractionalRegionResponse(**target_region.__dict__)
+            if target_region is not None else None
+        ),
+        target_phrase="white rectangle" if target_region is not None else None,
     )
 
 

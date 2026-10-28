@@ -1,7 +1,7 @@
 """Hosted Meta SAM 3.1 adapter and validated image-grounding normalization.
 
-The wire grammar and mask decoder are provided by the pinned official
-``meta-sam-parser`` package. This module never guesses geometry or masks.
+Box geometry is parsed by Groundline's first-party :mod:`sam_parser`; the
+provider package remains responsible only for its specialized mask encoding.
 """
 from __future__ import annotations
 
@@ -17,13 +17,13 @@ from typing import Any, AsyncIterator
 
 import httpx
 from meta_sam_parser import (
-    SegmentationBoxRecord,
     SegmentationMaskRecord,
     decode_mask_to_svg_path,
     image_segmentation_format,
     parse_responses_stream,
 )
 from PIL import Image, ImageOps, UnidentifiedImageError
+from app.sam_parser import parse_output_text
 
 MODEL_ID = "sam-3.1"
 BASE_URL = "https://api.meta.ai/v1"
@@ -183,7 +183,7 @@ def build_payload(image: ValidatedImage, target_phrase: str) -> dict[str, Any]:
 
 
 def _normalize_records(
-    parsed: Any, image: ValidatedImage
+    parsed: Any, image: ValidatedImage, output_text: str
 ) -> tuple[tuple[GroundObject, ...], tuple[dict[str, str], ...]]:
     diagnostics: list[dict[str, str]] = []
     for diagnostic in parsed.diagnostics:
@@ -196,30 +196,27 @@ def _normalize_records(
         if item["severity"] == "error":
             raise GroundingResponseError("SAM segmentation output failed validation")
 
-    boxes: dict[str, SegmentationBoxRecord] = {}
     masks: dict[str, SegmentationMaskRecord] = {}
     for record in parsed.records:
-        if isinstance(record, SegmentationBoxRecord):
-            boxes[record.object_id] = record
-        elif isinstance(record, SegmentationMaskRecord):
+        if isinstance(record, SegmentationMaskRecord):
             masks[record.object_id] = record
 
+    boxes = parse_output_text(output_text)
     if len(boxes) > MAX_OBJECTS:
         raise GroundingResponseError("SAM returned more objects than the response limit")
-    if set(masks) - set(boxes):
+    box_ids = {str(box.ordinal) for box in boxes}
+    if set(masks) - box_ids:
         raise GroundingResponseError("SAM returned a mask without its matching box")
 
     objects: list[GroundObject] = []
     total_path_chars = 0
-    for object_id, box in boxes.items():
-        left, top, right, bottom = box.left, box.top, box.right, box.bottom
+    for box in boxes:
+        object_id = str(box.ordinal)
+        left, top, right, bottom = box.x1, box.y1, box.x2, box.y2
         if not all(math.isfinite(v) for v in (left, top, right, bottom)):
             raise GroundingResponseError("SAM returned non-finite box coordinates")
-        if (
-            left < 0 or top < 0 or right <= left or bottom <= top
-            or right > image.width or bottom > image.height
-        ):
-            raise GroundingResponseError("SAM returned a box outside the source image")
+        if box.width != image.width or box.height != image.height:
+            raise GroundingResponseError("SAM box dimensions do not match the source image")
 
         mask_record = masks.get(object_id)
         mask_path: str | None = None
@@ -263,8 +260,10 @@ def _normalize_records(
             label="grounded target",
             x=left / image.width,
             y=top / image.height,
-            width=(right - left) / image.width,
-            height=(bottom - top) / image.height,
+            # SAM box x2/y2 are inclusive pixel indices, unlike the mask's
+            # right/bottom bounds, which are half-open extents.
+            width=(right - left + 1) / image.width,
+            height=(bottom - top + 1) / image.height,
             mask_path=mask_path,
             mask_width=mask_width,
             mask_height=mask_height,
@@ -298,7 +297,24 @@ async def parse_event_source(
     source: AsyncIterator[dict[str, Any]], *, image: ValidatedImage,
     target_phrase: str, response_id: str | None = None,
 ) -> GroundingResult:
-    parsed_stream = parse_responses_stream(source, image_segmentation_format())
+    output_parts: list[str] = []
+    saw_delta = False
+
+    async def captured_source() -> AsyncIterator[dict[str, Any]]:
+        nonlocal saw_delta
+        async for event in source:
+            if event.get("type") == "response.output_text.delta":
+                delta = event.get("delta")
+                if isinstance(delta, str):
+                    output_parts.append(delta)
+                    saw_delta = True
+            elif event.get("type") == "response.output_text.done" and not saw_delta:
+                text = event.get("text")
+                if isinstance(text, str):
+                    output_parts[:] = [text]
+            yield event
+
+    parsed_stream = parse_responses_stream(captured_source(), image_segmentation_format())
     try:
         parsed = await parsed_stream.final_result()
     except Exception as exc:
@@ -309,7 +325,7 @@ async def parse_event_source(
         ) from exc
     if getattr(parsed.outcome, "status", None) != "completed":
         raise GroundingResponseError("SAM stream ended before response.completed")
-    objects, diagnostics = _normalize_records(parsed, image)
+    objects, diagnostics = _normalize_records(parsed, image, "".join(output_parts))
     return GroundingResult(
         model=MODEL_ID,
         target_phrase=validate_target_phrase(target_phrase),

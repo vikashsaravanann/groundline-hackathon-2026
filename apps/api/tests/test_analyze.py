@@ -8,6 +8,7 @@ import base64
 import json
 import logging
 import socket
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -224,6 +225,37 @@ def test_analyze_mock_returns_structured_facts(monkeypatch):
     assert 0.0 <= body["overall_confidence"] <= 1.0
     assert body["objective_length"] == len(_valid_request()["objective"])
     assert body["usage"]["estimated_cost_usd"] == 0.0
+    assert body["target_found"] is False
+    assert body["target_region"] is None
+
+
+def test_analyze_returns_only_recorded_sam_region_for_exact_source_image(monkeypatch):
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    monkeypatch.setenv("GROUNDLINE_FORCE_MOCK", "1")
+    raw = (Path(__file__).resolve().parent.parent / "fixtures" / "synthetic_product_label.png").read_bytes()
+    request = _valid_request(
+        image_base64=base64.b64encode(raw).decode("ascii"), mime_type="image/png"
+    )
+    response = client.post("/api/analyze", json=request)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["target_found"] is True
+    assert body["target_phrase"] == "white rectangle"
+    region = body["target_region"]
+    assert region["x"] == pytest.approx(140 / 1200)
+    assert region["y"] == pytest.approx(110 / 820)
+    assert region["width"] == pytest.approx((1059 - 140 + 1) / 1200)
+    assert region["height"] == pytest.approx((708 - 110 + 1) / 820)
+
+
+def test_analyze_never_invents_region_for_unmatched_image(monkeypatch):
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    monkeypatch.setenv("GROUNDLINE_FORCE_MOCK", "1")
+    response = client.post("/api/analyze", json=_valid_request())
+    assert response.status_code == 200
+    assert response.json()["target_found"] is False
+    assert response.json()["target_region"] is None
+    assert response.json()["target_phrase"] is None
 
 
 def test_force_mock_makes_no_network_call(monkeypatch):
