@@ -1,0 +1,69 @@
+{
+  "provenance": "LIVE_META_SAM31_PROMPT_DISCOVERY",
+  "model": "sam-3.1",
+  "endpoint": "https://api.meta.ai/v1/responses",
+  "prompt": "white rectangle",
+  "http_status": 200,
+  "response_status": "completed",
+  "response_id": "resp_6ae1c4960203faa3da1549ef",
+  "usage": {
+    "images_processed": 1,
+    "input_tokens": 0,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 0,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 0
+  },
+  "elapsed_ms": 5288,
+  "raw_output_text_file": "sam31_prompt_white_rectangle.raw.txt",
+  "raw_saved_before_parse": true,
+  "request_shape": {
+    "model": "sam-3.1",
+    "input": [
+      {
+        "type": "message",
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "white rectangle"
+          },
+          {
+            "type": "input_image",
+            "image_url": "data:image/png;base64,[image bytes omitted from metadata]"
+          }
+        ]
+      }
+    ],
+    "stream": true,
+    "metadata": {
+      "mask_encoding": "one_bit",
+      "include_confidence": "true"
+    }
+  },
+  "error": null,
+  "parsed": {
+    "object_count": 1,
+    "estimated_cost_usd": 0.0025,
+    "objects": [
+      {
+        "object_id": "0",
+        "pixel_box": {
+          "x1": 140.0,
+          "y1": 110.0,
+          "x2": 1060.0,
+          "y2": 709.0
+        },
+        "mask_available": true,
+        "confidence": 0.5460992455482483
+      }
+    ],
+    "diagnostics": []
+  },
+  "raw_output_text_bytes": 1292,
+  "raw_output_text_sha256": "b50cf5cea6837fb42cd16c10a2ec1f9a6f77908aeca3e25863da503c6e40abf3"
+}
