@@ -38,6 +38,20 @@ describe("CameraPanel target overlay", () => {
     expect(screen.queryByTestId("target-region-canvas")).not.toBeInTheDocument();
   });
 
+  it("does not describe a refused analysis as a missing visual target", () => {
+    const refused = {
+      ...baseStudio,
+      result: {
+        ...baseStudio.result,
+        status: "refused",
+        refusalMessage: "This request is outside scope and was not sent to an AI provider.",
+      },
+    } as unknown as Studio;
+    render(<CameraPanel studio={refused} />);
+    expect(screen.queryByText(/Target not found/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Multiple candidates/)).not.toBeInTheDocument();
+  });
+
   it("mounts a canvas and visible MOCK provenance only for returned geometry", () => {
     vi.stubGlobal("ResizeObserver", undefined);
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { callback(0); return 1; });

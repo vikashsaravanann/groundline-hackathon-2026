@@ -185,13 +185,13 @@ export function CameraPanel({ studio }: { studio: Studio }) {
         )}
       </div>
 
-      {showPreview && studio.result && studio.groundingStatus === "multiple-candidates" && !activeRegion && (
+      {showPreview && studio.result?.status !== "refused" && studio.groundingStatus === "multiple-candidates" && !activeRegion && (
         <p role="status" className="text-center text-sm font-semibold text-ink">
           Multiple candidates — select one to highlight.
         </p>
       )}
 
-      {showPreview && studio.result && !activeRegion && studio.groundingStatus !== "multiple-candidates" && (
+      {showPreview && studio.result && studio.result.status !== "refused" && !activeRegion && studio.groundingStatus !== "multiple-candidates" && (
         <p role="status" className="text-center text-sm font-semibold text-ink">
           Target not found — no region is highlighted.
         </p>
