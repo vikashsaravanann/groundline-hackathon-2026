@@ -1,0 +1,41 @@
+{
+  "provenance": "SYNTHETIC_OFFLINE_FIXTURE",
+  "description": "Synthetic Spark-shaped fixture for the exact crop from the recorded SAM white-rectangle result; coordinates are fixture data, not a recorded Spark localization.",
+  "crop_fixture": "spark_model_number_crop.png",
+  "crop_sha256": "6ec6e35bbf7d7524db06720648cc3ea659fceab4fc5eaf787968ac3281bc532c",
+  "crop_width": 920,
+  "crop_height": 599,
+  "response": {
+    "id": "resp_synthetic_model_number_crop_fixture",
+    "object": "response",
+    "model": "muse-spark-1.3",
+    "status": "completed",
+    "error": null,
+    "output": [
+      {
+        "type": "message",
+        "id": "msg_synthetic_field_position",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "{\"field_name\":\"model number\",\"value\":\"NSL-2048\",\"position\":{\"x\":0.07065217391304347,\"y\":0.41736227045075125,\"width\":0.37717391304347825,\"height\":0.0667779632721202},\"confidence\":0.94}"
+          }
+        ],
+        "status": "completed"
+      }
+    ],
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "total_tokens": 0
+    },
+    "store": false
+  },
+  "expected_original_pixel_box": {
+    "x": 205,
+    "y": 360,
+    "width": 347,
+    "height": 40
+  }
+}

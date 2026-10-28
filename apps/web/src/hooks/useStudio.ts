@@ -238,12 +238,6 @@ export function useStudio(): Studio {
 
   const ground = useCallback(async (accessToken?: string) => {
     if (!image || !result || status !== "completed") return;
-    const phrase = targetPhrase.trim();
-    if (!phrase) {
-      setGroundingStatus("error");
-      setGroundingError({ kind: "validation", message: "Enter one object to ground.", hint: "Use a short noun phrase such as desk lamp." });
-      return;
-    }
     const sequence = ++groundingSeq.current;
     const sourceImage = image;
     groundingAbortRef.current?.abort();
@@ -259,11 +253,10 @@ export function useStudio(): Studio {
         mimeType: sourceImage.mimeType,
         width: sourceImage.width,
         height: sourceImage.height,
-        targetPhrase: phrase,
         accessToken,
         signal: controller.signal,
       });
-      if (sequence !== groundingSeq.current || imageRef.current?.base64 !== sourceImage.base64 || targetPhraseRef.current.trim() !== phrase) return;
+      if (sequence !== groundingSeq.current || imageRef.current?.base64 !== sourceImage.base64) return;
       setGroundingResult(grounded);
       setSelectedGroundingObjectId(grounded.objects.length === 1 ? grounded.objects[0].objectId : null);
       setGroundingStatus(
@@ -286,7 +279,7 @@ export function useStudio(): Studio {
     } finally {
       if (groundingAbortRef.current === controller) groundingAbortRef.current = null;
     }
-  }, [image, result, status, targetPhrase]);
+  }, [image, result, status]);
 
   const confirmField = useCallback((id: string) => {
     setResult((prev) =>

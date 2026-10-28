@@ -27,6 +27,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from app.sam_parser import parse_output_text
 
 MODEL_ID = "sam-3.1"
+LABEL_PROMPT = "white rectangle"
 BASE_URL = "https://api.meta.ai/v1"
 PATH = "/responses"
 API_KEY_ENV = "MODEL_API_KEY"
@@ -105,8 +106,17 @@ class GroundingResult:
     objects: tuple[GroundObject, ...]
     diagnostics: tuple[dict[str, str], ...]
     elapsed_ms: int
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
     estimated_cost_usd: float
     response_id: str | None
+
+
+def _safe_token_count(value: object) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return 0
+    return value
 
 
 def validate_target_phrase(value: str) -> str:
@@ -297,6 +307,7 @@ async def _sse_events(response: httpx.Response) -> AsyncIterator[dict[str, Any]]
 async def parse_event_source(
     source: AsyncIterator[dict[str, Any]], *, image: ValidatedImage,
     target_phrase: str, response_id: str | None = None,
+    usage: dict[str, Any] | None = None,
 ) -> GroundingResult:
     output_parts: list[str] = []
     saw_delta = False
@@ -336,6 +347,9 @@ async def parse_event_source(
         objects=objects,
         diagnostics=diagnostics,
         elapsed_ms=0,
+        input_tokens=_safe_token_count((usage or {}).get("input_tokens")),
+        output_tokens=_safe_token_count((usage or {}).get("output_tokens")),
+        total_tokens=_safe_token_count((usage or {}).get("total_tokens")),
         estimated_cost_usd=0.0,
         response_id=response_id,
     )
@@ -346,7 +360,10 @@ def mock_fixture_for(image: ValidatedImage, target_phrase: str) -> dict[str, Any
     from pathlib import Path
 
     fixture_root = Path(__file__).resolve().parent.parent / "fixtures"
-    paths = [fixture_root / "sam31_synthetic_response.json"]
+    paths = [
+        fixture_root / "sam31_synthetic_response.json",
+        fixture_root / "sam31_label_replay.json",
+    ]
     paths.extend(sorted((fixture_root / "adversarial").glob("*.json")))
     phrase = validate_target_phrase(target_phrase)
     for fixture_path in paths:
@@ -355,7 +372,10 @@ def mock_fixture_for(image: ValidatedImage, target_phrase: str) -> dict[str, Any
         except (OSError, json.JSONDecodeError):
             continue
         if (
-            fixture.get("provenance") == "SYNTHETIC_OFFLINE_FIXTURE"
+            fixture.get("provenance") in {
+                "SYNTHETIC_OFFLINE_FIXTURE",
+                "LIVE_META_SAM31_PROMPT_DISCOVERY",
+            }
             and fixture.get("image_sha256") == image.sha256
             and fixture.get("target_phrase") == phrase
             and fixture.get("image_width") == image.width
@@ -381,15 +401,17 @@ async def parse_mock_fixture(
         yield {
             "type": "response.completed",
             "response": {
-                "id": "resp_synthetic_sam_fixture",
+                "id": fixture.get("response_id") or "resp_synthetic_sam_fixture",
                 "status": "completed",
                 "model": MODEL_ID,
+                "usage": fixture.get("usage") if isinstance(fixture.get("usage"), dict) else {},
             },
         }
 
     return await parse_event_source(
         events(), image=image, target_phrase=target_phrase,
-        response_id="resp_synthetic_sam_fixture",
+        response_id=fixture.get("response_id") if isinstance(fixture.get("response_id"), str) else "resp_synthetic_sam_fixture",
+        usage=fixture.get("usage") if isinstance(fixture.get("usage"), dict) else {},
     )
 
 
@@ -404,6 +426,7 @@ async def complete_live(
     timeout_config = httpx.Timeout(timeout, connect=8.0, write=10.0, pool=5.0)
     started = time.monotonic()
     response_id: str | None = None
+    response_usage: dict[str, Any] = {}
     completed = False
     result: GroundingResult | None = None
     # A single retry is allowed only for failures before a connection is
@@ -411,6 +434,7 @@ async def complete_live(
     # and billed the request even if the client did not receive its response.
     for attempt in range(2):
         response_id = None
+        response_usage.clear()
         completed = False
         try:
             async with asyncio.timeout(timeout):
@@ -436,7 +460,7 @@ async def complete_live(
                             raise GroundingTransportError(f"Meta SAM request failed (HTTP {status})")
 
                         async def events() -> AsyncIterator[dict[str, Any]]:
-                            nonlocal response_id, completed
+                            nonlocal response_id, completed, response_usage
                             async for event in _sse_events(response):
                                 if event["type"] == "response.completed":
                                     body = event.get("response")
@@ -444,11 +468,16 @@ async def complete_live(
                                         raise GroundingResponseError("SAM did not complete the response")
                                     candidate = body.get("id")
                                     response_id = candidate if isinstance(candidate, str) else None
+                                    candidate_usage = body.get("usage")
+                                    response_usage.clear()
+                                    if isinstance(candidate_usage, dict):
+                                        response_usage.update(candidate_usage)
                                     completed = True
                                 yield event
 
                         result = await parse_event_source(
-                            events(), image=image, target_phrase=target_phrase
+                            events(), image=image, target_phrase=target_phrase,
+                            usage=response_usage,
                         )
             break
         except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
@@ -478,6 +507,9 @@ async def complete_live(
         objects=result.objects,
         diagnostics=result.diagnostics,
         elapsed_ms=int((time.monotonic() - started) * 1000),
+        input_tokens=result.input_tokens,
+        output_tokens=result.output_tokens,
+        total_tokens=result.total_tokens,
         estimated_cost_usd=IMAGE_PRICE_ESTIMATE_USD,
         response_id=response_id,
     )

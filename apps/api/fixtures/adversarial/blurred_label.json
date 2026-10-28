@@ -7,7 +7,7 @@
   "image_width": 640,
   "image_height": 420,
   "image_sha256": "2cdcf97cf39d8de1a73fec4da0804370897c816d7d1295b40556701d23739ab2",
-  "target_phrase": "printed product label",
+  "target_phrase": "white rectangle",
   "expected_pipeline_outcome": "no_match",
   "output_text": ""
 }

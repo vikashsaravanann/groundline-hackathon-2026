@@ -21,6 +21,23 @@ export interface GroundedObject {
   score: number | null;
 }
 
+export interface GroundingEvidenceRegion {
+  box: GroundingBox;
+  sourceModel: string;
+  confidence: number | null;
+  mode: "live" | "MOCK";
+  mask: GroundingMask | null;
+  fieldName: string | null;
+  value: string | null;
+}
+
+export interface GroundingStageUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  imagesProcessed: number;
+}
+
 export interface GroundingResult {
   mode: "live" | "MOCK";
   provider: string;
@@ -31,9 +48,16 @@ export interface GroundingResult {
   imageSha256: string;
   targetPhrase: string;
   objects: GroundedObject[];
+  labelRegion: GroundingEvidenceRegion | null;
+  fieldRegion: GroundingEvidenceRegion | null;
+  fieldStatus: "found" | "no_position" | "unavailable" | "not_attempted";
+  samUsage: GroundingStageUsage;
+  sparkUsage: GroundingStageUsage | null;
+  samEstimatedCostUsd: number;
+  sparkEstimatedCostUsd: number | null;
   diagnostics: Array<{ severity: string; code: string; message: string }>;
   correlationId: string;
   responseId: string | null;
   elapsedMs: number;
-  estimatedCostUsd: number;
+  estimatedCostUsd: number | null;
 }

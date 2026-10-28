@@ -75,12 +75,14 @@ def _objective_instruction(objective: str) -> str:
     )
 
 
-def build_image_input(image_data_url: str, objective: str) -> list[dict]:
+def build_image_input(
+    image_data_url: str, objective: str, *, instruction_override: str | None = None
+) -> list[dict]:
     """Build the verified Responses API input_image data-URL content shape."""
     return [{
         "role": "user",
         "content": [
-            {"type": "input_text", "text": _objective_instruction(objective)},
+            {"type": "input_text", "text": instruction_override or _objective_instruction(objective)},
             {"type": "input_image", "image_url": image_data_url},
         ],
     }]
@@ -146,12 +148,15 @@ class MetaClient:
     def build_payload(
         self, *, objective: str, image_data_url: str, effort: str = DEFAULT_EFFORT,
         max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
+        instruction_override: str | None = None,
     ) -> dict:
         if effort not in ALLOWED_EFFORTS:
             raise ValueError(f"effort must be one of {ALLOWED_EFFORTS}, got {effort!r}")
         return {
             "model": self.model_id,
-            "input": build_image_input(image_data_url, objective),
+            "input": build_image_input(
+                image_data_url, objective, instruction_override=instruction_override
+            ),
             "reasoning": {"effort": effort},
             "store": False,
             "max_output_tokens": max_output_tokens,
@@ -164,6 +169,8 @@ class MetaClient:
         self, *, objective: str, image_data_url: str, effort: str = DEFAULT_EFFORT,
         max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
         timeout: float = DEFAULT_TIMEOUT,
+        max_attempts: int = MAX_ATTEMPTS,
+        instruction_override: str | None = None,
     ) -> ModelResult:
         key = os.environ.get(self.key_env)
         if not key:
@@ -171,11 +178,14 @@ class MetaClient:
         payload = self.build_payload(
             objective=objective, image_data_url=image_data_url, effort=effort,
             max_output_tokens=max_output_tokens,
+            instruction_override=instruction_override,
         )
         headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
         last_error: ProviderTransportError | None = None
         started = time.monotonic()
-        for _attempt in range(MAX_ATTEMPTS):
+        if not 1 <= max_attempts <= MAX_ATTEMPTS:
+            raise ValueError(f"max_attempts must be between 1 and {MAX_ATTEMPTS}")
+        for _attempt in range(max_attempts):
             try:
                 with httpx.Client(base_url=self.base_url, timeout=timeout) as client:
                     response = client.post(self.path, json=payload, headers=headers)

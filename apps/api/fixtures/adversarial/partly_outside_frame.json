@@ -7,7 +7,7 @@
   "image_width": 640,
   "image_height": 420,
   "image_sha256": "1abbf0447b0178726ff358e4a5ff16d39cd8dbf32c0bfccef291c94ab78436e0",
-  "target_phrase": "printed product label",
+  "target_phrase": "white rectangle",
   "expected_pipeline_outcome": "one_clamped_candidate",
   "output_text": "<0f>0<|box;x1=0;y1=113;x2=221;y2=286;w=640;h=420|><|mask;x=0;y=0;data=4,4,!!!!!'y80v-)c|>"
 }

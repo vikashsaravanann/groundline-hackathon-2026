@@ -5,19 +5,21 @@ import base64
 import json
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 from io import BytesIO
 
 from app import main, sam_client
 from app.main import app
+from app.model_types import ModelResult, ProviderResponseError, Usage
 
 client = TestClient(app)
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 
 
-def request_body(*, image_bytes: bytes | None = None, target="desk lamp"):
-    data = image_bytes or (FIXTURES / "sam31_synthetic_image.png").read_bytes()
+def request_body(*, image_bytes: bytes | None = None, target="white rectangle"):
+    data = image_bytes or (FIXTURES / "synthetic_product_label.png").read_bytes()
     return {
         "mime_type": "image/png",
         "image_base64": base64.b64encode(data).decode("ascii"),
@@ -41,15 +43,23 @@ def test_forced_mock_ground_returns_exact_synthetic_fixture(monkeypatch):
     assert body["provider"] == "synthetic-fixture"
     assert body["status"] == "completed"
     assert body["model"] == "sam-3.1"
-    assert body["image_width"] == 800 and body["image_height"] == 600
+    assert body["image_width"] == 1200 and body["image_height"] == 820
     assert body["objects"][0]["object_id"] == "0"
-    assert body["objects"][0]["box"] == {
-        "x": 190 / 800, "y": 105 / 600, "width": 286 / 800, "height": 420 / 600,
-    }
+    assert body["objects"][0]["box"] == {"x": 140 / 1200, "y": 110 / 820, "width": 920 / 1200, "height": 599 / 820}
     assert body["objects"][0]["mask"]["encoding"] == "svg-path"
-    assert body["objects"][0]["mask"]["bounds"] == {
-        "x": 190 / 800, "y": 105 / 600, "width": 286 / 800, "height": 420 / 600,
+    assert body["label_region"]["source_model"] == "sam-3.1"
+    assert body["label_region"]["confidence"] == pytest.approx(0.5460992455482483)
+    assert body["field_region"]["source_model"] == "muse-spark-1.3"
+    assert body["field_region"]["field_name"] == "model number"
+    assert body["field_region"]["value"] == "NSL-2048"
+    assert body["field_region"]["confidence"] == pytest.approx(0.94)
+    assert body["field_region"]["box"] == {
+        "x": pytest.approx(205 / 1200), "y": pytest.approx(360 / 820),
+        "width": pytest.approx(347 / 1200), "height": pytest.approx(40 / 820),
     }
+    assert body["field_status"] == "found"
+    assert body["sam_usage"]["total_tokens"] == 0
+    assert body["spark_usage"]["total_tokens"] == 0
     assert body["estimated_cost_usd"] == 0
     assert response.headers["X-Correlation-ID"] == body["correlation_id"]
 
@@ -100,6 +110,8 @@ def test_five_adversarial_fixtures_report_no_match_or_explicit_candidates(monkey
             assert box["y"] + box["height"] <= 1.000001
         if expected_status == "multiple_candidates":
             assert body["objects"][0]["object_id"] != body["objects"][1]["object_id"]
+            assert body["label_region"] is None
+            assert body["field_region"] is None
 
 
 def test_feature_flag_is_off_by_default_and_returns_not_found(monkeypatch):
@@ -183,3 +195,44 @@ def test_request_body_and_image_byte_limits(monkeypatch):
         "mime_type": "image/png", "image_base64": huge, "target_phrase": "lamp",
     })
     assert oversized.status_code == 422
+
+
+def test_spark_no_position_keeps_only_the_sam_label_region(monkeypatch):
+    monkeypatch.setenv("GROUNDLINE_FEATURE_GROUNDING_ENABLED", "1")
+    monkeypatch.setenv("GROUNDLINE_PROVIDER_IMAGE_GROUNDING", "meta-sam")
+    monkeypatch.setenv("GROUNDLINE_FORCE_MOCK", "1")
+    monkeypatch.setattr(
+        main.provider_router,
+        "localize_model_number",
+        lambda **kwargs: ModelResult(
+            text='{"field_name":"model number","value":null,"position":null,"confidence":null}',
+            model="muse-spark-1.3", usage=Usage(0, 0, 0, 0), elapsed_ms=0,
+            mode="MOCK", status="completed",
+        ),
+    )
+    response = client.post("/api/ground", json=request_body())
+    assert response.status_code == 200
+    body = response.json()
+    assert body["label_region"]["source_model"] == "sam-3.1"
+    assert body["field_region"] is None
+    assert body["field_status"] == "no_position"
+    assert body["estimated_cost_usd"] == 0
+
+
+def test_spark_failure_falls_back_to_label_region_without_a_field_box(monkeypatch):
+    monkeypatch.setenv("GROUNDLINE_FEATURE_GROUNDING_ENABLED", "1")
+    monkeypatch.setenv("GROUNDLINE_PROVIDER_IMAGE_GROUNDING", "meta-sam")
+    monkeypatch.setenv("GROUNDLINE_FORCE_MOCK", "1")
+
+    def fail_stage_two(**kwargs):
+        raise ProviderResponseError("synthetic stage-two parse failure")
+
+    monkeypatch.setattr(main.provider_router, "localize_model_number", fail_stage_two)
+    response = client.post("/api/ground", json=request_body())
+    assert response.status_code == 200
+    body = response.json()
+    assert body["label_region"] is not None
+    assert body["field_region"] is None
+    assert body["field_status"] == "unavailable"
+    assert body["spark_estimated_cost_usd"] == 0
+    assert body["estimated_cost_usd"] == 0

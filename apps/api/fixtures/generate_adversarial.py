@@ -51,7 +51,7 @@ def save(name: str, image: Image.Image, boxes: list[tuple[int, int, int, int]], 
         "image_width": W,
         "image_height": H,
         "image_sha256": digest,
-        "target_phrase": "printed product label",
+        "target_phrase": "white rectangle",
         "expected_pipeline_outcome": outcome,
         "output_text": raw,
     }

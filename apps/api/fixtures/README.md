@@ -44,3 +44,29 @@ All six responses reported `images_processed: 1` and zero input/output text toke
 ### Finding
 
 SAM 3.1 did locate the physical label when prompted with the concise visual phrase `white rectangle`; the returned box and mask identify the whole sticker, not the small `MODEL: NSL-2048` text line itself. The four requested semantic/material descriptions plus the concise noun `sticker` returned legitimate zero-match outputs. This demonstrates reachability and one successful region match on this fixture, but it does not yet establish reliable OCR-line segmentation. No UI work or additional live calls were performed.
+
+## Two-stage label-to-field grounding fixtures — 28 October 2026
+
+The `/api/ground` two-stage path uses the authentic `white rectangle` SAM
+response above to locate the complete sticker, then crops the original image
+using that box and asks Muse Spark to return the model-number field's position
+relative to the crop. The deterministic crop is `spark_model_number_crop.png`
+(920 × 599 pixels; SHA-256
+`6ec6e35bbf7d7524db06720648cc3ea659fceab4fc5eaf787968ac3281bc532c`). Its
+source bounds are `x=140..1060`, `y=110..709` in the 1200 × 820 source image.
+
+- `sam31_label_replay.json` wraps the raw `output_text` from the genuine live
+  SAM 3.1 `white rectangle` call above, preserving its returned box, mask,
+  response ID, and provider usage metadata. This is authentic SAM evidence.
+- `spark_model_number_crop.png` is the deterministic crop made from that
+  returned SAM box.
+- `muse_spark_model_number_position.json` is a **synthetic offline fixture**
+  matching the exact crop hash and dimensions. It exercises Muse Spark response
+  parsing and coordinate mapping, but is not a captured Muse Spark crop call.
+  Its crop-relative box maps to the expected source-image reference
+  `x≈205..552`, `y≈360..400`.
+
+This fixture chain verifies crop construction, coordinate transformation,
+response normalization, and honest label-only fallback without a new provider
+request. It does not establish live Muse Spark crop localization. The fixture's
+zero usage and zero cost fields describe offline mock data only.

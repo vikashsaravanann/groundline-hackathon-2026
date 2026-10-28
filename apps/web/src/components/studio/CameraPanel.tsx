@@ -32,14 +32,20 @@ export function CameraPanel({ studio }: { studio: Studio }) {
     : null;
   const useGroundingOutcome = ["completed", "no-match", "mock-unavailable", "multiple-candidates"].includes(studio.groundingStatus);
   const activeRegion = useGroundingOutcome
-    ? liveGroundingSelection?.box ?? null
+    ? studio.groundingResult?.fieldRegion?.box
+      ?? studio.groundingResult?.labelRegion?.box
+      ?? liveGroundingSelection?.box
     : studio.result?.targetFound
       && studio.result.targetRegion
       && studio.targetPhrase.trim() === studio.result.targetPhrase
       ? studio.result.targetRegion
       : null;
+  const contextRegion = studio.groundingResult?.fieldRegion
+    ? studio.groundingResult.labelRegion?.box ?? null
+    : null;
   const activePhrase = liveGroundingSelection
-    ? studio.groundingResult?.targetPhrase
+    ? studio.groundingResult?.fieldRegion?.fieldName
+      ?? (studio.groundingResult?.labelRegion ? "Product label" : studio.groundingResult?.targetPhrase)
     : studio.result?.targetPhrase;
   const activeSource = liveGroundingSelection
     ? studio.groundingResult?.mode === "live" ? "meta-live" : "mock"
@@ -148,9 +154,13 @@ export function CameraPanel({ studio }: { studio: Studio }) {
             />
             {activeRegion && (
               <>
-                <TargetRegionCanvas image={stillImage} region={activeRegion} />
+                <TargetRegionCanvas image={stillImage} region={activeRegion} contextRegion={contextRegion} />
                 <span className="absolute left-3 top-3 z-20 max-w-[calc(100%-1.5rem)] rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-navy shadow-sm">
-                  SAM region · {activePhrase}
+                  {studio.groundingResult?.fieldRegion
+                    ? `Model-number field · ${activePhrase}`
+                    : studio.groundingResult?.labelRegion
+                      ? "Product label · SAM 3.1"
+                      : `SAM region · ${activePhrase}`}
                 </span>
                 {activeSource === "mock" && (
                   <span className="absolute bottom-3 left-3 z-20 max-w-[calc(100%-1.5rem)]">

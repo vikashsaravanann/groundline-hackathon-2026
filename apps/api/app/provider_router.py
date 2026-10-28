@@ -8,6 +8,7 @@ from app.baseten_client import BasetenClient
 from app.meta_client import MetaClient, _objective_instruction
 from app.meta_client import ALLOWED_EFFORTS
 from app import sam_client
+from app import field_localizer
 from app.model_types import (
     Capability,
     ModelResult,
@@ -107,6 +108,30 @@ async def ground_image(*, image: sam_client.ValidatedImage, target_phrase: str):
             "Meta SAM credential is not configured"
         )
     return await sam_client.complete_live(image=image, target_phrase=target_phrase)
+
+
+def localize_model_number(*, crop: field_localizer.CroppedLabel) -> ModelResult | None:
+    """Use the image-fact capability for the second, crop-only Spark stage.
+
+    A forced-MOCK request is available only for the exact crop fixture. LIVE
+    uses one Spark request; no fallback provider or second attempt is allowed.
+    """
+    provider = provider_for(Capability.IMAGE_FACT_EXTRACTION)
+    if not isinstance(provider, MetaClient):
+        raise ProviderConfigurationError("Model-number localization requires Meta image extraction")
+    if use_mock(Capability.IMAGE_FACT_EXTRACTION):
+        fixture = field_localizer.mock_fixture_for(crop)
+        if fixture is None:
+            return None
+        return provider.parse(fixture["response"], elapsed_ms=0, mode="MOCK")
+    return provider.complete_live(
+        objective="Locate the model-number field inside the supplied product-label crop.",
+        image_data_url=field_localizer.crop_data_url(crop),
+        effort="low",
+        max_output_tokens=256,
+        max_attempts=1,
+        instruction_override=field_localizer.FIELD_PROMPT,
+    )
 
 
 def call_model(

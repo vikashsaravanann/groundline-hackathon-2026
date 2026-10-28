@@ -25,8 +25,7 @@ export function GroundingPanel({ studio }: { studio: Studio }) {
   if (!image || !result) return null;
 
   const inProgress = groundingStatus === "grounding";
-  const targetReady = studio.targetPhrase.trim().length > 0;
-  const canGround = targetReady && !inProgress;
+  const canGround = !inProgress;
   const statusLabel = groundingStatus === "no-match"
     ? "No match"
     : groundingStatus === "mock-unavailable"
@@ -51,25 +50,23 @@ export function GroundingPanel({ studio }: { studio: Studio }) {
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:items-start">
         <div className="flex min-w-0 flex-col gap-3">
-          <GroundingOverlay imageUrl={image.dataUrl} width={image.width} height={image.height} objects={groundingResult?.objects ?? []} selectedId={selected?.objectId ?? null} />
+          <GroundingOverlay
+            imageUrl={image.dataUrl}
+            width={image.width}
+            height={image.height}
+            objects={groundingResult?.objects ?? []}
+            selectedId={selected?.objectId ?? null}
+            labelRegion={groundingResult?.labelRegion ?? null}
+            fieldRegion={groundingResult?.fieldRegion ?? null}
+          />
           <p className="text-center text-xs text-muted">Outlined regions come from the returned geometry. A mask is shown only when the parser validated one.</p>
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <label htmlFor="ground-target" className="text-sm font-semibold text-ink">Re-select target</label>
-            <input
-              id="ground-target"
-              value={studio.targetPhrase}
-              onChange={(event) => {
-                studio.setTargetPhrase(event.target.value);
-                setConfirmation(null);
-              }}
-              maxLength={80}
-              placeholder="For example, desk lamp"
-              className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus-visible:border-blue-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent/30"
-            />
-            <p className="text-xs leading-relaxed text-muted">Change the phrase to choose a different visible target. Groundline sends it only when you submit the grounding request.</p>
+          <div className="rounded-2xl border border-line bg-white/70 p-4">
+            <p className="text-sm font-semibold text-ink">Stage 1 target</p>
+            <p className="mt-1 text-sm text-ink-soft">white rectangle</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted">This verified visual prompt locates the product label. Spark then examines only that returned crop for the model-number field.</p>
           </div>
 
           {GROUNDING_LIVE_PREVIEW_ENABLED && <details className="rounded-2xl border border-line/70 bg-white/60 p-4">
@@ -105,6 +102,18 @@ export function GroundingPanel({ studio }: { studio: Studio }) {
           {groundingStatus === "no-match" && <p role="status" className="rounded-2xl bg-cloud p-4 text-sm text-ink-soft">No matching object was found. Try a more specific description or select another target.</p>}
           {groundingStatus === "multiple-candidates" && <p role="status" className="rounded-2xl bg-cloud p-4 text-sm text-ink-soft">Multiple candidates were found. Choose the intended region below; no candidate is highlighted on the capture until you select one.</p>}
           {groundingStatus === "mock-unavailable" && <p role="status" className="rounded-2xl bg-purple-light/40 p-4 text-sm text-ink-soft">This public service is in MOCK mode. Its sample mask is available only for the matching synthetic desk-lamp scene; no live detection was made for this image.</p>}
+          {groundingResult?.labelRegion && groundingResult.fieldRegion && (
+            <div className="rounded-2xl border border-line bg-white/80 p-4 text-sm">
+              <p className="font-semibold text-ink">Primary highlight · {groundingResult.fieldRegion.fieldName ?? "Model-number field"}</p>
+              <p className="mt-1 text-ink-soft">{groundingResult.fieldRegion.value ?? "Field position found"} · {groundingResult.fieldRegion.sourceModel} · confidence {groundingResult.fieldRegion.confidence === null ? "not provided" : `${Math.round(groundingResult.fieldRegion.confidence * 100)}%`}</p>
+              <p className="mt-2 text-xs text-muted">Faint context outline · product label · {groundingResult.labelRegion.sourceModel} · confidence {groundingResult.labelRegion.confidence === null ? "not provided" : `${Math.round(groundingResult.labelRegion.confidence * 100)}%`}</p>
+            </div>
+          )}
+          {groundingResult?.labelRegion && !groundingResult.fieldRegion && (
+            <p role="status" className="rounded-2xl bg-cloud p-4 text-sm text-ink-soft">
+              Showing the SAM product-label region only. The model-number position was {groundingResult.fieldStatus === "no_position" ? "not returned" : "unavailable"}; no field box was drawn.
+            </p>
+          )}
           {groundingError && <GroundingError error={groundingError} />}
 
           {groundingResult && groundingResult.objects.length > 0 && (
@@ -140,7 +149,8 @@ export function GroundingPanel({ studio }: { studio: Studio }) {
               )}
               <dl className="grid grid-cols-2 gap-3 border-t border-line pt-3 text-xs text-muted">
                 <div><dt>Source image</dt><dd className="mt-1 break-all font-mono">SHA-256 {groundingResult.imageSha256.slice(0, 16)}…</dd></div>
-                <div><dt>Estimated cost</dt><dd className="mt-1 text-ink-soft">{groundingResult.mode === "MOCK" ? "$0.00000 · MOCK" : `$${groundingResult.estimatedCostUsd.toFixed(5)} · estimate`}</dd></div>
+                <div><dt>Stage usage</dt><dd className="mt-1 text-ink-soft">SAM {groundingResult.samUsage.totalTokens} tokens · Spark {groundingResult.sparkUsage?.totalTokens ?? 0} tokens{groundingResult.mode === "MOCK" ? " · MOCK fixture" : ""}</dd></div>
+                <div><dt>Estimated cost</dt><dd className="mt-1 text-ink-soft">{groundingResult.mode === "MOCK" ? "$0.00000 · MOCK" : groundingResult.estimatedCostUsd === null ? "Unknown · provider completion uncertain" : `$${groundingResult.estimatedCostUsd.toFixed(5)} · estimate`}</dd></div>
               </dl>
             </div>
           )}
@@ -156,12 +166,16 @@ function GroundingOverlay({
   height,
   objects,
   selectedId,
+  labelRegion,
+  fieldRegion,
 }: {
   imageUrl: string;
   width: number;
   height: number;
   objects: NonNullable<Studio["groundingResult"]>["objects"];
   selectedId: string | null;
+  labelRegion: NonNullable<Studio["groundingResult"]>["labelRegion"];
+  fieldRegion: NonNullable<Studio["groundingResult"]>["fieldRegion"];
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-white/70 p-2">
@@ -170,7 +184,7 @@ function GroundingOverlay({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={imageUrl} alt="Source image with grounded object overlay" width={width} height={height} className="block h-auto max-h-[70vh] max-w-full w-auto rounded-xl object-contain" />
         <svg aria-hidden="true" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
-          {objects.map((object) => {
+          {!labelRegion && objects.map((object) => {
             const selected = object.objectId === selectedId;
             return (
               <g key={object.objectId}>
@@ -188,6 +202,46 @@ function GroundingOverlay({
               </g>
             );
           })}
+          {labelRegion && (
+            <g data-region-source={labelRegion.sourceModel}>
+              {labelRegion.mask && (
+                <path
+                  d={labelRegion.mask.path}
+                  transform={`translate(${labelRegion.mask.bounds.x * width} ${labelRegion.mask.bounds.y * height}) scale(${labelRegion.mask.bounds.width * width / labelRegion.mask.width} ${labelRegion.mask.bounds.height * height / labelRegion.mask.height})`}
+                  fill="rgba(115, 139, 166, 0.07)"
+                  stroke="rgba(73, 96, 123, 0.48)"
+                  strokeWidth={Math.max(1.5, width / 500)}
+                  strokeDasharray="8 6"
+                  vectorEffect="non-scaling-stroke"
+                />
+              )}
+              <rect
+                x={labelRegion.box.x * width}
+                y={labelRegion.box.y * height}
+                width={labelRegion.box.width * width}
+                height={labelRegion.box.height * height}
+                fill="none"
+                stroke="rgba(73, 96, 123, 0.58)"
+                strokeWidth={Math.max(1.5, width / 500)}
+                strokeDasharray="9 7"
+                vectorEffect="non-scaling-stroke"
+              />
+            </g>
+          )}
+          {fieldRegion && (
+            <g data-region-source={fieldRegion.sourceModel}>
+              <rect
+                x={fieldRegion.box.x * width}
+                y={fieldRegion.box.y * height}
+                width={fieldRegion.box.width * width}
+                height={fieldRegion.box.height * height}
+                fill="rgba(64, 126, 180, 0.32)"
+                stroke="#173b5e"
+                strokeWidth={Math.max(2.5, width / 300)}
+                vectorEffect="non-scaling-stroke"
+              />
+            </g>
+          )}
         </svg>
       </div>
     </div>

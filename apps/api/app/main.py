@@ -14,7 +14,7 @@ from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
-from app import grounding_security, meta_client, provider_router, sam_client, sam_parser
+from app import field_localizer, grounding_security, meta_client, provider_router, sam_client, sam_parser
 from app.model_types import Capability, ProviderError
 
 app = FastAPI(title="Groundline API", version="0.1.0")
@@ -298,7 +298,7 @@ MAX_GROUND_TARGET_CHARS = sam_client.MAX_TARGET_CHARS
 class GroundingRequest(BaseModel):
     mime_type: str
     image_base64: str = Field(max_length=MAX_GROUND_BASE64_CHARS)
-    target_phrase: str
+    target_phrase: str = Field(default=sam_client.LABEL_PROMPT)
 
     @field_validator("mime_type")
     @classmethod
@@ -325,9 +325,12 @@ class GroundingRequest(BaseModel):
     @classmethod
     def _ground_target(cls, value: str) -> str:
         try:
-            return sam_client.validate_target_phrase(value)
+            phrase = sam_client.validate_target_phrase(value)
         except sam_client.GroundingValidationError as exc:
             raise ValueError(str(exc)) from exc
+        if phrase != sam_client.LABEL_PROMPT:
+            raise ValueError(f"Grounding currently uses the verified label prompt: {sam_client.LABEL_PROMPT}")
+        return phrase
 
 
 class GroundBox(BaseModel):
@@ -353,6 +356,23 @@ class GroundObjectResponse(BaseModel):
     score: float | None
 
 
+class RegionEvidenceResponse(BaseModel):
+    box: GroundBox
+    source_model: str
+    confidence: float | None
+    mode: str
+    mask: GroundMask | None = None
+    field_name: str | None = None
+    value: str | None = None
+
+
+class GroundingStageUsage(BaseModel):
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    images_processed: int = 0
+
+
 class GroundingResponse(BaseModel):
     mode: str
     provider: str
@@ -363,11 +383,18 @@ class GroundingResponse(BaseModel):
     image_sha256: str
     target_phrase: str
     objects: list[GroundObjectResponse]
+    label_region: RegionEvidenceResponse | None
+    field_region: RegionEvidenceResponse | None
+    field_status: str
+    sam_usage: GroundingStageUsage
+    spark_usage: GroundingStageUsage | None
+    sam_estimated_cost_usd: float
+    spark_estimated_cost_usd: float | None
     diagnostics: list[dict[str, str]]
     correlation_id: str
     response_id: str | None = None
     elapsed_ms: int
-    estimated_cost_usd: float
+    estimated_cost_usd: float | None
 
 
 def _clamp(value: object, default: float = 0.0) -> float:
@@ -597,7 +624,7 @@ async def ground(
 
     try:
         result = await provider_router.ground_image(
-            image=image, target_phrase=req.target_phrase
+            image=image, target_phrase=sam_client.LABEL_PROMPT
         )
         mode = "live" if result is not None and not forced_mock else "MOCK"
         status = (
@@ -625,21 +652,93 @@ async def ground(
                     )
                 objects.append(GroundObjectResponse(
                     object_id=item.object_id,
-                    label=req.target_phrase,
+                    label=sam_client.LABEL_PROMPT,
                     box=GroundBox(
                         x=item.x, y=item.y, width=item.width, height=item.height
                     ),
                     mask=mask,
                     score=item.score,
                 ))
-        elapsed = result.elapsed_ms if result is not None else int((time.monotonic() - started) * 1000)
-        cost = result.estimated_cost_usd if mode == "live" and result else 0.0
+        sam_cost = result.estimated_cost_usd if mode == "live" and result else 0.0
         model = result.model if result else sam_client.MODEL_ID
-        if status == "no_match":
-            status = "no_match"
+        label_region = None
+        field_region = None
+        field_status = "not_attempted"
+        spark_result = None
+        spark_attempted = False
+
+        if result is not None and len(result.objects) == 1:
+            label_object = objects[0]
+            label_region = RegionEvidenceResponse(
+                box=label_object.box,
+                source_model=result.model,
+                confidence=label_object.score,
+                mode=mode,
+                mask=label_object.mask,
+            )
+            field_status = "unavailable"
+            try:
+                crop = field_localizer.crop_label(image, result.objects[0])
+                spark_attempted = True
+                spark_result = provider_router.localize_model_number(crop=crop)
+                if spark_result is None:
+                    field_status = "unavailable"
+                else:
+                    localized = field_localizer.parse_position(
+                        spark_result.text, spark_result, crop
+                    )
+                    field_status = localized.status
+                    if localized.field is not None:
+                        field = localized.field
+                        field_region = RegionEvidenceResponse(
+                            box=GroundBox(
+                                x=field.x, y=field.y,
+                                width=field.width, height=field.height,
+                            ),
+                            source_model=spark_result.model,
+                            confidence=field.confidence,
+                            mode=spark_result.mode,
+                            field_name=field.field_name,
+                            value=field.value,
+                        )
+            except (field_localizer.FieldLocalizationError, ProviderError) as exc:
+                # Stage two is optional once SAM found the label. Preserve the
+                # label evidence and report field-localization failure honestly.
+                logger.warning(
+                    "ground cid=%s stage=spark_field status=unavailable error=%s",
+                    cid, type(exc).__name__,
+                )
+                field_status = "unavailable"
+
+        spark_usage = None
+        spark_cost: float | None = 0.0
+        if spark_result is not None:
+            spark_usage = GroundingStageUsage(
+                input_tokens=spark_result.usage.input_tokens,
+                output_tokens=spark_result.usage.output_tokens,
+                total_tokens=spark_result.usage.total_tokens,
+            )
+            spark_cost = (
+                spark_result.usage.estimated_cost_usd
+                if spark_result.mode == "live"
+                else 0.0
+            )
+        elif spark_attempted and not forced_mock:
+            # The provider may have accepted the request before a transport error.
+            spark_cost = None
+        total_cost = None if spark_cost is None else sam_cost + spark_cost
+        elapsed = int((time.monotonic() - started) * 1000)
         logger.info(
-            "ground cid=%s mode=%s model=%s status=%s target_len=%d objects=%d elapsed_ms=%d estimated_cost_usd=%.6f",
-            cid, mode, model, status, len(req.target_phrase), len(objects), elapsed, cost,
+            "ground cid=%s mode=%s sam_model=%s status=%s field_status=%s "
+            "sam_in_tok=%d sam_out_tok=%d spark_in_tok=%d spark_out_tok=%d "
+            "elapsed_ms=%d estimated_cost_usd=%s",
+            cid, mode, model, status, field_status,
+            result.input_tokens if result else 0,
+            result.output_tokens if result else 0,
+            spark_result.usage.input_tokens if spark_result else 0,
+            spark_result.usage.output_tokens if spark_result else 0,
+            elapsed,
+            f"{total_cost:.6f}" if total_cost is not None else "unknown",
         )
         return GroundingResponse(
             mode=mode,
@@ -649,13 +748,25 @@ async def ground(
             image_width=image.width,
             image_height=image.height,
             image_sha256=image.sha256,
-            target_phrase=req.target_phrase,
+            target_phrase=sam_client.LABEL_PROMPT,
             objects=objects,
+            label_region=label_region,
+            field_region=field_region,
+            field_status=field_status,
+            sam_usage=GroundingStageUsage(
+                input_tokens=result.input_tokens if result else 0,
+                output_tokens=result.output_tokens if result else 0,
+                total_tokens=result.total_tokens if result else 0,
+                images_processed=1 if mode == "live" and result else 0,
+            ),
+            spark_usage=spark_usage,
+            sam_estimated_cost_usd=sam_cost,
+            spark_estimated_cost_usd=spark_cost,
             diagnostics=list(result.diagnostics) if result else [],
             correlation_id=cid,
             response_id=result.response_id if result else None,
             elapsed_ms=elapsed,
-            estimated_cost_usd=cost,
+            estimated_cost_usd=total_cost,
         )
     except sam_client.GroundingError as exc:
         status_code, message = _ground_error_status(exc)

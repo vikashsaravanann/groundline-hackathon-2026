@@ -1,13 +1,14 @@
 import { API_BASE, GROUND_TIMEOUT_MS } from "./config";
 import { ApiError } from "./api";
-import type { GroundingBox, GroundingMask, GroundingResult } from "@/types/grounding";
+import type { GroundingBox, GroundingEvidenceRegion, GroundingMask, GroundingResult, GroundingStageUsage } from "@/types/grounding";
+
+export const LABEL_GROUNDING_PROMPT = "white rectangle";
 
 export interface GroundInput {
   base64: string;
   mimeType: string;
   width: number;
   height: number;
-  targetPhrase: string;
   accessToken?: string;
   signal?: AbortSignal;
 }
@@ -31,6 +32,56 @@ function finiteBox(value: unknown): GroundingBox | null {
   return { x: x as number, y: y as number, width: width as number, height: height as number };
 }
 
+function finiteMask(value: unknown): GroundingMask | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "object") throw new Error("A grounding mask is malformed.");
+  const m = value as Record<string, unknown>;
+  const bounds = finiteBox(m.bounds);
+  if (
+    m.encoding !== "svg-path" || typeof m.path !== "string" || m.path.length > 350_000 ||
+    !/^[MLZmlz0-9.,\s+\-]+$/.test(m.path) || !bounds ||
+    typeof m.width !== "number" || typeof m.height !== "number" ||
+    !Number.isInteger(m.width) || !Number.isInteger(m.height) || m.width <= 0 || m.height <= 0
+  ) throw new Error("A grounding mask is invalid.");
+  return { encoding: "svg-path", path: m.path, width: m.width, height: m.height, bounds };
+}
+
+function evidenceRegion(value: unknown): GroundingEvidenceRegion | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "object") throw new Error("A grounding evidence region is malformed.");
+  const item = value as Record<string, unknown>;
+  const box = finiteBox(item.box);
+  const confidence = item.confidence;
+  if (
+    !box || typeof item.source_model !== "string" || !item.source_model ||
+    (item.mode !== "live" && item.mode !== "MOCK") ||
+    (confidence !== null && (typeof confidence !== "number" || !Number.isFinite(confidence) || confidence < 0 || confidence > 1)) ||
+    (item.field_name !== null && item.field_name !== undefined && typeof item.field_name !== "string") ||
+    (item.value !== null && item.value !== undefined && typeof item.value !== "string")
+  ) throw new Error("A grounding evidence region has invalid provenance or geometry.");
+  return {
+    box,
+    sourceModel: item.source_model,
+    confidence: confidence as number | null,
+    mode: item.mode,
+    mask: finiteMask(item.mask),
+    fieldName: typeof item.field_name === "string" ? item.field_name : null,
+    value: typeof item.value === "string" ? item.value : null,
+  };
+}
+
+function stageUsage(value: unknown): GroundingStageUsage {
+  if (!value || typeof value !== "object") return { inputTokens: 0, outputTokens: 0, totalTokens: 0, imagesProcessed: 0 };
+  const v = value as Record<string, unknown>;
+  const count = (n: unknown) => typeof n === "number" && Number.isInteger(n) && n >= 0 ? n : 0;
+  return {
+    inputTokens: count(v.input_tokens),
+    outputTokens: count(v.output_tokens),
+    totalTokens: count(v.total_tokens),
+    imagesProcessed: count(v.images_processed),
+  };
+}
+
 export function normalizeGrounding(
   raw: unknown,
   correlationId: string,
@@ -52,21 +103,18 @@ export function normalizeGrounding(
     if (!box || typeof o.object_id !== "string" || typeof o.label !== "string") {
       throw new Error("A grounded object has invalid geometry.");
     }
-    let mask: GroundingMask | null = null;
-    if (o.mask !== null && o.mask !== undefined) {
-      const m = o.mask as Record<string, unknown>;
-      const bounds = finiteBox(m.bounds);
-      if (
-        m.encoding !== "svg-path" || typeof m.path !== "string" || m.path.length > 350_000 ||
-        !/^[MLZmlz0-9.,\s+\-]+$/.test(m.path) || !bounds ||
-        typeof m.width !== "number" || typeof m.height !== "number" ||
-        !Number.isInteger(m.width) || !Number.isInteger(m.height) || m.width <= 0 || m.height <= 0
-      ) throw new Error("A grounded mask is invalid.");
-      mask = { encoding: "svg-path", path: m.path, width: m.width, height: m.height, bounds };
-    }
+    const mask = finiteMask(o.mask);
     const score = typeof o.score === "number" && Number.isFinite(o.score) ? o.score : null;
     return { objectId: o.object_id, label: o.label, box, mask, score };
   });
+  const fieldStatus = ["found", "no_position", "unavailable", "not_attempted"].includes(String(r.field_status))
+    ? r.field_status as GroundingResult["fieldStatus"] : "unavailable";
+  const samEstimatedCost = typeof r.sam_estimated_cost_usd === "number" && Number.isFinite(r.sam_estimated_cost_usd)
+    ? r.sam_estimated_cost_usd : 0;
+  const sparkEstimatedCost = r.spark_estimated_cost_usd === null
+    ? null
+    : typeof r.spark_estimated_cost_usd === "number" && Number.isFinite(r.spark_estimated_cost_usd)
+      ? r.spark_estimated_cost_usd : null;
   return {
     mode: r.mode,
     provider: typeof r.provider === "string" ? r.provider : "unknown",
@@ -79,17 +127,24 @@ export function normalizeGrounding(
     imageSha256: expected.sha256,
     targetPhrase: r.target_phrase,
     objects,
+    labelRegion: evidenceRegion(r.label_region),
+    fieldRegion: evidenceRegion(r.field_region),
+    fieldStatus,
+    samUsage: stageUsage(r.sam_usage),
+    sparkUsage: r.spark_usage === null || r.spark_usage === undefined ? null : stageUsage(r.spark_usage),
+    samEstimatedCostUsd: r.mode === "MOCK" ? 0 : samEstimatedCost,
+    sparkEstimatedCostUsd: r.mode === "MOCK" ? 0 : sparkEstimatedCost,
     diagnostics: Array.isArray(r.diagnostics) ? r.diagnostics as GroundingResult["diagnostics"] : [],
     correlationId: typeof r.correlation_id === "string" ? r.correlation_id : correlationId,
     responseId: typeof r.response_id === "string" ? r.response_id : null,
     elapsedMs: typeof r.elapsed_ms === "number" && Number.isFinite(r.elapsed_ms) ? r.elapsed_ms : 0,
     estimatedCostUsd: r.mode === "MOCK" ? 0 :
-      (typeof r.estimated_cost_usd === "number" && Number.isFinite(r.estimated_cost_usd) ? r.estimated_cost_usd : 0),
+      (typeof r.estimated_cost_usd === "number" && Number.isFinite(r.estimated_cost_usd) ? r.estimated_cost_usd : null),
   };
 }
 
 export async function groundImage({
-  base64, mimeType, width, height, targetPhrase, accessToken, signal,
+  base64, mimeType, width, height, accessToken, signal,
 }: GroundInput): Promise<GroundingResult> {
   if (!API_BASE) {
     throw new ApiError("network", "The Groundline API is not configured.", "Configure the HTTPS API origin and rebuild.");
@@ -117,7 +172,7 @@ export async function groundImage({
       response = await fetch(`${API_BASE}/api/ground`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ mime_type: mimeType, image_base64: base64, target_phrase: targetPhrase }),
+        body: JSON.stringify({ mime_type: mimeType, image_base64: base64, target_phrase: LABEL_GROUNDING_PROMPT }),
         signal: controller.signal,
       });
     } catch {

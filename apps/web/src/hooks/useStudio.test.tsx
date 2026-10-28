@@ -41,6 +41,9 @@ const groundResult = {
   mode: "MOCK", provider: "synthetic-fixture", model: "sam-3.1", status: "completed",
   imageWidth: 10, imageHeight: 10, imageSha256: "a".repeat(64), targetPhrase: "desk lamp",
   objects: [], diagnostics: [], correlationId: "c1", responseId: null, elapsedMs: 0, estimatedCostUsd: 0,
+  labelRegion: null, fieldRegion: null, fieldStatus: "not_attempted",
+  samUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, imagesProcessed: 0 },
+  sparkUsage: null, samEstimatedCostUsd: 0, sparkEstimatedCostUsd: 0,
 } as const;
 
 function setMediaDevices(value: unknown) {

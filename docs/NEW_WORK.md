@@ -241,3 +241,31 @@ browser rendering, network transit, Render cold starts, and Meta inference.
 | Empty frame | `no_match`, 0 objects | 2.674 ms |
 
 These are local MOCK-path measurements, not estimates of live SAM latency.
+
+## 2026-10-28 — Two-stage label and model-number grounding
+
+Implemented `/api/ground` as two explicitly attributed stages. SAM 3.1 uses
+the previously verified `white rectangle` prompt and recorded live response to
+locate the complete product-label sticker. For a unique label candidate, the
+backend crops the original source image to SAM's returned box and asks Muse
+Spark to locate the model-number field within that crop. The Spark crop
+position is transformed into fractions of the original image, so the existing
+frontend overlay can draw the field and label regions in the same coordinate
+space.
+
+The fixture-driven end-to-end test uses authentic recorded SAM output and a
+separate synthetic Spark crop-position response. The latter is clearly marked
+synthetic; no live Spark crop localization is claimed. The mock UI draws the
+field region as the primary highlight and the SAM label box as a faint context
+outline. If Spark returns no position or fails, the API retains only the
+SAM-backed label region, reports the field stage status, and returns no field
+box.
+
+Offline verification: backend `pytest` **120 passed**; frontend lint and
+TypeScript passed; Vitest **44 passed**; Next.js production build passed; API
+`pip check` found no broken requirements. No new live provider calls were made:
+the local Meta credential was unavailable in the authorized environment.
+Consequently, this run used zero live tokens and incurred no new provider cost.
+Recorded SAM token usage and the synthetic Spark fixture's zero usage are not
+new live-call measurements. Live verification of the complete two-model chain
+remains pending an authorized environment containing the Meta credential.
