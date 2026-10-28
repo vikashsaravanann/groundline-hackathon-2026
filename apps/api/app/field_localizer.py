@@ -42,6 +42,7 @@ class CroppedLabel:
     top: int
     source_width: int
     source_height: int
+    source_sha256: str
 
 
 @dataclass(frozen=True)
@@ -86,7 +87,7 @@ def crop_label(
     except (OSError, ValueError) as exc:
         raise FieldLocalizationError("SAM label crop could not be decoded") from exc
     image = sam_client.validate_image(output.getvalue(), "image/png")
-    return CroppedLabel(image, left, top, source.width, source.height)
+    return CroppedLabel(image, left, top, source.width, source.height, source.sha256)
 
 
 def crop_data_url(crop: CroppedLabel) -> str:
@@ -117,7 +118,16 @@ def mock_fixture_for(crop: CroppedLabel) -> dict[str, Any] | None:
                 "SYNTHETIC_OFFLINE_FIXTURE",
                 "LIVE_META_MUSE_SPARK_CROP_POSITION",
             }
-            or fixture.get("crop_sha256") != crop.image.sha256
+            # PNG encoder output can differ across Pillow/Python versions.
+            # Bind the offline response to the exact approved source image and
+            # returned crop geometry instead of the encoded crop bytes.
+            or fixture.get("source_image_sha256") != crop.source_sha256
+            or fixture.get("crop_box") != {
+                "left": crop.left,
+                "top": crop.top,
+                "width": crop.image.width,
+                "height": crop.image.height,
+            }
             or fixture.get("crop_width") != crop.image.width
             or fixture.get("crop_height") != crop.image.height
             or not isinstance(response, dict)

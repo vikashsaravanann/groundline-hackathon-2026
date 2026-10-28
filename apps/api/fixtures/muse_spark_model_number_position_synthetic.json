@@ -2,6 +2,13 @@
   "provenance": "SYNTHETIC_OFFLINE_FIXTURE",
   "description": "Synthetic Spark-shaped fixture for the exact crop from the recorded SAM white-rectangle result; coordinates are fixture data, not a recorded Spark localization.",
   "crop_fixture": "spark_model_number_crop.png",
+  "source_image_sha256": "34a031a10d9910ea89141015600be473f3cb33933687e6e5cedc2934a202cbc4",
+  "crop_box": {
+    "left": 140,
+    "top": 110,
+    "width": 920,
+    "height": 599
+  },
   "crop_sha256": "6ec6e35bbf7d7524db06720648cc3ea659fceab4fc5eaf787968ac3281bc532c",
   "crop_width": 920,
   "crop_height": 599,

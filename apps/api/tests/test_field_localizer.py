@@ -29,7 +29,8 @@ def test_crop_is_the_exact_recorded_sam_label_region():
     assert fixture is not None
     assert crop.image.width == 920 and crop.image.height == 599
     assert crop.left == 140 and crop.top == 110
-    assert crop.image.sha256 == "6ec6e35bbf7d7524db06720648cc3ea659fceab4fc5eaf787968ac3281bc532c"
+    assert crop.source_sha256 == "34a031a10d9910ea89141015600be473f3cb33933687e6e5cedc2934a202cbc4"
+    assert fixture["crop_box"] == {"left": 140, "top": 110, "width": 920, "height": 599}
 
 
 def test_model_number_position_maps_from_crop_to_original_fractional_space():
