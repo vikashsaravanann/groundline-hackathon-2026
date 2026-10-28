@@ -21,6 +21,7 @@ export interface Studio {
   groundingStatus: GroundingStatus;
   groundingResult: GroundingResult | null;
   groundingError: StudioError | null;
+  selectedGroundingObjectId: string | null;
   targetPhrase: string;
   error: StudioError | null;
   objectiveValid: boolean;
@@ -39,6 +40,7 @@ export interface Studio {
   ground: (accessToken?: string) => Promise<void>;
   cancelGrounding: () => void;
   clearGrounding: () => void;
+  selectGroundingObject: (id: string | null) => void;
   reset: () => void;
 }
 
@@ -51,6 +53,7 @@ export function useStudio(): Studio {
   const [groundingStatus, setGroundingStatus] = useState<GroundingStatus>("idle");
   const [groundingResult, setGroundingResult] = useState<GroundingResult | null>(null);
   const [groundingError, setGroundingError] = useState<StudioError | null>(null);
+  const [selectedGroundingObjectId, setSelectedGroundingObjectId] = useState<string | null>(null);
   const [targetPhrase, setTargetPhraseState] = useState("");
   const [error, setError] = useState<StudioError | null>(null);
   const [capturing, setCapturing] = useState(false);
@@ -71,6 +74,7 @@ export function useStudio(): Studio {
     setGroundingStatus("idle");
     setGroundingResult(null);
     setGroundingError(null);
+    setSelectedGroundingObjectId(null);
   }, []);
 
   const setSelectedImage = useCallback((next: SelectedImage | null) => {
@@ -183,7 +187,7 @@ export function useStudio(): Studio {
       });
       if (seq !== requestSeq.current) return; // a newer request / cancel won
       setResult(res);
-      const suggestedTarget = res.detectedObject?.trim() ?? "";
+      const suggestedTarget = res.targetPhrase?.trim() || res.detectedObject?.trim() || "";
       targetPhraseRef.current = suggestedTarget;
       setTargetPhraseState(suggestedTarget);
       clearGrounding();
@@ -224,6 +228,10 @@ export function useStudio(): Studio {
     setGroundingStatus("cancelled");
   }, []);
 
+  const selectGroundingObject = useCallback((id: string | null) => {
+    setSelectedGroundingObjectId(id);
+  }, []);
+
   const ground = useCallback(async (accessToken?: string) => {
     if (!image || !result || status !== "completed") return;
     const phrase = targetPhrase.trim();
@@ -250,6 +258,7 @@ export function useStudio(): Studio {
       });
       if (sequence !== groundingSeq.current || imageRef.current?.base64 !== sourceImage.base64 || targetPhraseRef.current.trim() !== phrase) return;
       setGroundingResult(grounded);
+      setSelectedGroundingObjectId(grounded.objects[0]?.objectId ?? null);
       setGroundingStatus(grounded.status === "no_match" ? "no-match" : grounded.status === "mock_unavailable" ? "mock-unavailable" : "completed");
     } catch (err) {
       if (sequence !== groundingSeq.current) return;
@@ -281,16 +290,25 @@ export function useStudio(): Studio {
   }, []);
 
   const editField = useCallback((id: string, value: string) => {
-    setResult((prev) =>
-      prev
-        ? {
-            ...prev,
-            fields: prev.fields.map((f) =>
-              f.id === id ? { ...f, value, userConfirmed: true } : f,
-            ),
-          }
-        : prev,
-    );
+    setResult((prev) => {
+      if (!prev) return prev;
+      const field = prev.fields.find((candidate) => candidate.id === id);
+      if (!field || (field.value ?? "") === value) return prev;
+      return {
+        ...prev,
+        correctionEvents: [...prev.correctionEvents, {
+          id: `${Date.now()}-${prev.correctionEvents.length}`,
+          fieldId: field.id,
+          label: field.label,
+          timestamp: new Date().toISOString(),
+          originalValue: field.modelValue,
+          correctedValue: value,
+        }],
+        fields: prev.fields.map((candidate) =>
+          candidate.id === id ? { ...candidate, value, userConfirmed: true } : candidate,
+        ),
+      };
+    });
   }, []);
 
   const reset = useCallback(() => {
@@ -318,6 +336,7 @@ export function useStudio(): Studio {
     groundingStatus,
     groundingResult,
     groundingError,
+    selectedGroundingObjectId,
     targetPhrase,
     error,
     objectiveValid,
@@ -336,6 +355,7 @@ export function useStudio(): Studio {
     ground,
     cancelGrounding,
     clearGrounding,
+    selectGroundingObject,
     reset,
   };
 }

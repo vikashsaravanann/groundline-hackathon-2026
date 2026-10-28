@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import type { Studio } from "@/hooks/useStudio";
 
 export function IntentComposer({ studio }: { studio: Studio }) {
-  const { objective, setObjective, status } = studio;
+  const { objective, setObjective, status, result } = studio;
   const remaining = MAX_OBJECTIVE_CHARS - objective.length;
   const analyzing = status === "analyzing";
   const over = remaining < 0;
@@ -72,7 +72,7 @@ export function IntentComposer({ studio }: { studio: Studio }) {
             title={studio.canAnalyze ? undefined : "Add an image and an objective first"}
           >
             <Sparkles className="h-4 w-4" />
-            Analyze
+            {result ? "Re-analyze" : "Analyze"}
           </Button>
         )}
       </div>

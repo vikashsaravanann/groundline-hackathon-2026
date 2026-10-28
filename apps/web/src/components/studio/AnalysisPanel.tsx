@@ -42,6 +42,31 @@ export function AnalysisPanel({ studio }: { studio: Studio }) {
             )}
           </div>
 
+          {result.correctionEvents.length > 0 && (
+            <section aria-label="Human correction audit" className="flex flex-col gap-3 rounded-2xl border border-blue-accent/20 bg-blue-light/35 p-4">
+              <div>
+                <h3 className="text-sm font-semibold text-ink">Human correction history</h3>
+                <p className="mt-1 text-xs text-ink-soft">The original model value and each saved human correction are kept together for this analysis.</p>
+              </div>
+              <ol className="flex flex-col gap-2">
+                {result.correctionEvents.map((event) => (
+                  <li key={event.id} className="rounded-xl border border-white/80 bg-white/80 p-3 text-sm">
+                    <p className="font-semibold text-ink">{event.label}</p>
+                    <p className="mt-1 text-ink-soft">
+                      Model said: <span className="font-medium text-ink">{event.originalValue ?? "Not readable"}</span>
+                    </p>
+                    <p className="text-ink-soft">
+                      Human changed it to: <span className="font-medium text-ink">{event.correctedValue || "Blank"}</span>
+                    </p>
+                    <time dateTime={event.timestamp} className="mt-1 block text-xs text-muted">
+                      {new Date(event.timestamp).toLocaleString()}
+                    </time>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
           <div className="flex flex-col gap-2">
             <h3 className="text-sm font-semibold text-ink">Extracted information</h3>
             <div className="grid gap-3 sm:grid-cols-2">

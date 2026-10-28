@@ -52,4 +52,30 @@ describe("normalizeAnalyze", () => {
     expect(r.fields).toHaveLength(0);
     expect(r.cautions.length).toBeGreaterThan(0);
   });
+
+  it("preserves a valid SAM fractional region and never invents one", () => {
+    const found = normalizeAnalyze({
+      ...backend,
+      target_found: true,
+      target_phrase: "white rectangle",
+      target_region: { x: 0.1, y: 0.2, width: 0.7, height: 0.6 },
+    }, "x");
+    expect(found.targetFound).toBe(true);
+    expect(found.targetRegion).toEqual({ x: 0.1, y: 0.2, width: 0.7, height: 0.6 });
+    expect(found.targetPhrase).toBe("white rectangle");
+
+    const absent = normalizeAnalyze({ ...backend, target_found: false, target_region: { x: 0, y: 0, width: 1, height: 1 } }, "x");
+    expect(absent.targetFound).toBe(false);
+    expect(absent.targetRegion).toBeNull();
+  });
+
+  it("rejects invalid fractional geometry", () => {
+    const result = normalizeAnalyze({
+      ...backend,
+      target_found: true,
+      target_region: { x: 0.9, y: 0.2, width: 0.5, height: 0.3 },
+    }, "x");
+    expect(result.targetFound).toBe(false);
+    expect(result.targetRegion).toBeNull();
+  });
 });

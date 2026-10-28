@@ -8,6 +8,8 @@ import { StatusPill } from "@/components/design/StatusPill";
 import { cn } from "@/lib/utils";
 import type { Studio } from "@/hooks/useStudio";
 import { UploadDropzone } from "./UploadDropzone";
+import { TargetRegionCanvas } from "./TargetRegionCanvas";
+import { MockLiveBadge } from "@/components/design/MockLiveBadge";
 
 export function CameraPanel({ studio }: { studio: Studio }) {
   const { status, camera, image, capturing } = studio;
@@ -18,11 +20,30 @@ export function CameraPanel({ studio }: { studio: Studio }) {
   const captureFrameRef = useRef<HTMLDivElement>(null);
   const [frameAspect, setFrameAspect] = useState(4 / 3);
   const [previewSize, setPreviewSize] = useState<{ width: number; height: number } | null>(null);
+  const [stillImage, setStillImage] = useState<HTMLImageElement | null>(null);
   const showVideo = active && !image;
   const showPreview = image !== null;
   const requesting = status === "requesting-camera";
   const cameraError = status === "error" && !image ? studio.error : null;
   const showConsent = !showVideo && !showPreview && !requesting;
+  const liveGroundingSelection = studio.groundingStatus === "completed"
+    ? studio.groundingResult?.objects.find((item) => item.objectId === studio.selectedGroundingObjectId)
+      ?? null
+    : null;
+  const useGroundingOutcome = ["completed", "no-match", "mock-unavailable"].includes(studio.groundingStatus);
+  const activeRegion = useGroundingOutcome
+    ? liveGroundingSelection?.box ?? null
+    : studio.result?.targetFound
+      && studio.result.targetRegion
+      && studio.targetPhrase.trim() === studio.result.targetPhrase
+      ? studio.result.targetRegion
+      : null;
+  const activePhrase = liveGroundingSelection
+    ? studio.groundingResult?.targetPhrase
+    : studio.result?.targetPhrase;
+  const activeSource = liveGroundingSelection
+    ? studio.groundingResult?.mode === "live" ? "meta-live" : "mock"
+    : studio.result?.source;
 
   useLayoutEffect(() => {
     const panel = panelRef.current;
@@ -117,12 +138,28 @@ export function CameraPanel({ studio }: { studio: Studio }) {
         )}
 
         {showPreview && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={image.dataUrl}
-            alt="Captured image to analyze"
-            className="absolute inset-0 h-full w-full object-contain"
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              ref={setStillImage}
+              src={image.dataUrl}
+              alt="Captured image to analyze"
+              className="absolute inset-0 h-full w-full object-contain"
+            />
+            {activeRegion && (
+              <>
+                <TargetRegionCanvas image={stillImage} region={activeRegion} />
+                <span className="absolute left-3 top-3 z-20 max-w-[calc(100%-1.5rem)] rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-navy shadow-sm">
+                  SAM region · {activePhrase}
+                </span>
+                {activeSource === "mock" && (
+                  <span className="absolute bottom-3 left-3 z-20 max-w-[calc(100%-1.5rem)]">
+                    <MockLiveBadge source="mock" />
+                  </span>
+                )}
+              </>
+            )}
+          </>
         )}
 
         {requesting && (
@@ -147,6 +184,12 @@ export function CameraPanel({ studio }: { studio: Studio }) {
           </div>
         )}
       </div>
+
+      {showPreview && studio.result && !activeRegion && (
+        <p role="status" className="text-center text-sm font-semibold text-ink">
+          Target not found — no region is highlighted.
+        </p>
+      )}
 
       {cameraError && (
         <div role="alert" className="rounded-2xl border border-danger/30 bg-[#fbe9ec] p-3">

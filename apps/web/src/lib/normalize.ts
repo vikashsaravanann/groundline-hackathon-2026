@@ -18,6 +18,9 @@ interface RawAnalyze {
   model?: unknown;
   facts?: unknown;
   usage?: RawUsage;
+  target_found?: unknown;
+  target_region?: unknown;
+  target_phrase?: unknown;
 }
 
 /**
@@ -40,6 +43,7 @@ export function normalizeAnalyze(raw: unknown, correlationId: string): AnalysisR
     return {
       id: `field-${i}`,
       label: humanize(typeof f.label === "string" ? f.label : `Field ${i + 1}`),
+      modelValue: value,
       value,
       confidence,
       evidence: null, // backend does not yet supply per-field evidence
@@ -60,6 +64,7 @@ export function normalizeAnalyze(raw: unknown, correlationId: string): AnalysisR
         }
       : null;
 
+  const targetRegion = normalizeRegion(r.target_region);
   return {
     analysisId: correlationId || randomId(),
     source,
@@ -74,7 +79,24 @@ export function normalizeAnalyze(raw: unknown, correlationId: string): AnalysisR
     analyzedAt: new Date().toISOString(),
     model: typeof r.model === "string" ? r.model : null,
     usage,
+    targetFound: r.target_found === true && targetRegion !== null,
+    targetRegion: r.target_found === true ? targetRegion : null,
+    targetPhrase: typeof r.target_phrase === "string" ? r.target_phrase : null,
+    correctionEvents: [],
   };
+}
+
+function normalizeRegion(value: unknown): AnalysisResult["targetRegion"] {
+  if (value === null || typeof value !== "object") return null;
+  const region = value as Record<string, unknown>;
+  const { x, y, width, height } = region;
+  if (![x, y, width, height].every((part) => typeof part === "number" && Number.isFinite(part))) return null;
+  const nx = x as number;
+  const ny = y as number;
+  const nw = width as number;
+  const nh = height as number;
+  if (nx < 0 || ny < 0 || nw <= 0 || nh <= 0 || nx + nw > 1.000001 || ny + nh > 1.000001) return null;
+  return { x: nx, y: ny, width: nw, height: nh };
 }
 
 function buildSummary(count: number, detected: string | null): string {

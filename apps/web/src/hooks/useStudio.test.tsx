@@ -29,8 +29,12 @@ const selected: SelectedImage = {
 
 const analysis = {
   analysisId: "analysis-1", source: "mock", status: "completed", summary: "sample",
-  detectedObject: "desk lamp", fields: [], cautions: [], analyzedAt: "2026-10-28T00:00:00Z",
-  model: "fixture", usage: null,
+  detectedObject: "desk lamp", fields: [{
+    id: "field-0", label: "Model number", modelValue: "GL-OLD", value: "GL-OLD",
+    confidence: null, evidence: null, userConfirmed: false,
+  }], cautions: [], analyzedAt: "2026-10-28T00:00:00Z",
+  model: "fixture", usage: null, targetFound: false, targetRegion: null,
+  targetPhrase: null, correctionEvents: [],
 };
 
 const groundResult = {
@@ -139,5 +143,24 @@ describe("useStudio", () => {
     });
     expect(result.current.groundingResult).toBeNull();
     expect(result.current.groundingStatus).toBe("ready");
+  });
+
+  it("replaces an extracted value and records the model-to-human correction", async () => {
+    vi.mocked(imageFromFile).mockResolvedValue(selected);
+    vi.mocked(analyzeImage).mockResolvedValue(analysis as never);
+    const { result } = renderHook(() => useStudio());
+    await act(async () => result.current.selectFile(new File(["synthetic"], "sample.png", { type: "image/png" })));
+    act(() => result.current.setObjective("Read the model number"));
+    await act(async () => result.current.analyze());
+
+    act(() => result.current.editField("field-0", "GL-CORRECTED"));
+    expect(result.current.result?.fields[0].value).toBe("GL-CORRECTED");
+    expect(result.current.result?.correctionEvents).toHaveLength(1);
+    expect(result.current.result?.correctionEvents[0]).toMatchObject({
+      fieldId: "field-0",
+      originalValue: "GL-OLD",
+      correctedValue: "GL-CORRECTED",
+    });
+    expect(Number.isNaN(Date.parse(result.current.result!.correctionEvents[0].timestamp))).toBe(false);
   });
 });

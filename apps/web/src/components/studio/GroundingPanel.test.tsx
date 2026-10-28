@@ -9,6 +9,7 @@ const studio = {
   image: { dataUrl: "data:image/png;base64,AA==", width: 800, height: 600 },
   result: { facts: [] },
   targetPhrase: "desk lamp",
+  selectedGroundingObjectId: "0",
   setTargetPhrase: vi.fn(),
   ground: vi.fn(),
   cancelGrounding: vi.fn(),

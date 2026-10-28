@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Check, Pencil } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -38,24 +38,39 @@ export function ExtractedFieldCard({
       </div>
 
       {editing ? (
-        <div className="flex items-center gap-2">
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={(event: FormEvent<HTMLFormElement>) => {
+            event.preventDefault();
+            onEdit(field.id, draft.trim());
+            setEditing(false);
+          }}
+        >
+          <p className="text-xs text-muted">
+            Model value: <span className="font-medium text-ink-soft">{field.modelValue ?? "Not readable"}</span>
+          </p>
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             aria-label={`Edit ${field.label}`}
-            className="w-full rounded-lg border border-line bg-white px-2 py-1 text-sm text-ink focus-visible:border-blue-accent focus-visible:outline-none"
+            className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink focus-visible:border-blue-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent/30"
           />
-          <button
-            type="button"
-            onClick={() => {
-              onEdit(field.id, draft.trim());
-              setEditing(false);
-            }}
-            className="rounded-lg bg-navy px-3 py-1 text-xs font-semibold text-white"
-          >
-            Save
-          </button>
-        </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="submit"
+              className="rounded-lg bg-navy px-3 py-2 text-xs font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent focus-visible:ring-offset-2"
+            >
+              Save correction
+            </button>
+            <button
+              type="button"
+              onClick={() => { setDraft(field.value ?? ""); setEditing(false); }}
+              className="rounded-lg border border-line bg-white px-3 py-2 text-xs font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent focus-visible:ring-offset-2"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
       ) : (
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm font-medium text-ink">
@@ -69,7 +84,7 @@ export function ExtractedFieldCard({
                 setDraft(field.value ?? "");
                 setEditing(true);
               }}
-              className="rounded-lg p-1.5 text-muted hover:bg-cloud hover:text-ink"
+              className="rounded-lg p-1.5 text-muted hover:bg-cloud hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent"
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
@@ -83,6 +98,7 @@ export function ExtractedFieldCard({
                 field.userConfirmed
                   ? "bg-success text-white"
                   : "text-muted hover:bg-cloud hover:text-ink",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent",
               )}
             >
               <Check className="h-3.5 w-3.5" />

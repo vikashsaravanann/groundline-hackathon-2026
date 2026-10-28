@@ -13,15 +13,14 @@ import { GroundingError } from "./GroundingError";
 export function GroundingPanel({ studio }: { studio: Studio }) {
   const { image, result, groundingStatus, groundingResult, groundingError } = studio;
   const [accessCode, setAccessCode] = useState("");
-  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<{ resultKey: string; objectId: string } | null>(null);
   const resultKey = groundingResult
     ? `${groundingResult.imageSha256}:${groundingResult.targetPhrase}:${groundingResult.responseId ?? groundingResult.correlationId}`
     : "";
 
   const selected = useMemo(
-    () => groundingResult?.objects.find((object) => object.objectId === selectedObjectId) ?? groundingResult?.objects[0] ?? null,
-    [groundingResult, selectedObjectId],
+    () => groundingResult?.objects.find((object) => object.objectId === studio.selectedGroundingObjectId) ?? null,
+    [groundingResult, studio.selectedGroundingObjectId],
   );
   if (!image || !result) return null;
 
@@ -56,7 +55,7 @@ export function GroundingPanel({ studio }: { studio: Studio }) {
 
         <div className="flex min-w-0 flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <label htmlFor="ground-target" className="text-sm font-semibold text-ink">Object to ground</label>
+            <label htmlFor="ground-target" className="text-sm font-semibold text-ink">Re-select target</label>
             <input
               id="ground-target"
               value={studio.targetPhrase}
@@ -68,7 +67,7 @@ export function GroundingPanel({ studio }: { studio: Studio }) {
               placeholder="For example, desk lamp"
               className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus-visible:border-blue-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent/30"
             />
-            <p className="text-xs leading-relaxed text-muted">The model expects one concrete noun phrase, not a question or a list.</p>
+            <p className="text-xs leading-relaxed text-muted">Change the phrase to choose a different visible target. Groundline sends it only when you submit the grounding request.</p>
           </div>
 
           {GROUNDING_LIVE_PREVIEW_ENABLED && <details className="rounded-2xl border border-line/70 bg-white/60 p-4">
@@ -91,7 +90,7 @@ export function GroundingPanel({ studio }: { studio: Studio }) {
           <div className="flex flex-wrap items-center gap-2">
             <Button onClick={() => void studio.ground(accessCode || undefined)} disabled={!canGround}>
               {inProgress ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Crosshair className="h-4 w-4" aria-hidden="true" />}
-              {inProgress ? "Grounding…" : "Ground object"}
+              {inProgress ? "Grounding…" : "Find this target"}
             </Button>
             {inProgress && <Button variant="secondary" onClick={studio.cancelGrounding}>Cancel</Button>}
             {groundingResult && <Button variant="ghost" onClick={studio.clearGrounding}><RotateCcw className="h-4 w-4" />Clear result</Button>}
@@ -116,7 +115,7 @@ export function GroundingPanel({ studio }: { studio: Studio }) {
                     <button
                       type="button"
                       aria-pressed={selected?.objectId === object.objectId}
-                      onClick={() => { setSelectedObjectId(object.objectId); setConfirmation(null); }}
+                      onClick={() => { studio.selectGroundingObject(object.objectId); setConfirmation(null); }}
                       className={`flex w-full items-center justify-between gap-3 rounded-2xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-accent ${selected?.objectId === object.objectId ? "border-navy bg-blue-light/45" : "border-line bg-white/70 hover:bg-white"}`}
                     >
                       <span className="min-w-0">
@@ -132,7 +131,7 @@ export function GroundingPanel({ studio }: { studio: Studio }) {
               {selected && (
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="secondary" onClick={() => setConfirmation({ resultKey, objectId: selected.objectId })}>Confirm selected region</Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setSelectedObjectId(null); setConfirmation(null); }}>Reject selection</Button>
+                  <Button size="sm" variant="ghost" onClick={() => { studio.selectGroundingObject(null); setConfirmation(null); }}>Reject selection</Button>
                   {confirmation?.resultKey === resultKey && confirmation.objectId === selected.objectId && <StatusPill tone="success">Confirmed for this review</StatusPill>}
                 </div>
               )}

@@ -8,6 +8,7 @@ import type { AnalysisField } from "@/types/analysis";
 const field: AnalysisField = {
   id: "f0",
   label: "Model number",
+  modelValue: "GL-DEMO-2048",
   value: "GL-DEMO-2048",
   confidence: null,
   evidence: null,
@@ -30,9 +31,24 @@ describe("ExtractedFieldCard", () => {
     const input = screen.getByLabelText(/Edit Model number/i);
     await user.clear(input);
     await user.type(input, "NEW-123");
-    await user.click(screen.getByText("Save"));
+    await user.click(screen.getByRole("button", { name: "Save correction" }));
 
     expect(onEdit).toHaveBeenCalledWith("f0", "NEW-123");
+  });
+
+  it("allows the correction form to be completed from the keyboard", async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    render(<ExtractedFieldCard field={field} onConfirm={() => {}} onEdit={onEdit} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Model number" }));
+    await user.tab();
+    expect(screen.getByLabelText("Edit Model number")).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Save correction" })).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    expect(onEdit).toHaveBeenCalledWith("f0", "GL-DEMO-2048");
   });
 
   it("toggles confirmation", async () => {
