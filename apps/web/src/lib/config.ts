@@ -79,3 +79,6 @@ export const SNAPSHOT_MAX_EDGE = 1280; // longest side, pixels
 // bounded wait with headroom, but never auto-retry: future LIVE requests can
 // incur a charge and the first response may only be delayed, not lost.
 export const ANALYZE_TIMEOUT_MS = 120_000;
+export const GROUND_TIMEOUT_MS = 120_000;
+// Access-code entry is hidden unless a separately restricted preview build opts in.
+export const GROUNDING_LIVE_PREVIEW_ENABLED = process.env.NEXT_PUBLIC_GROUNDING_LIVE_PREVIEW_ENABLED === "1";

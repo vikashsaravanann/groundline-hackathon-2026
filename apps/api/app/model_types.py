@@ -8,6 +8,7 @@ from enum import StrEnum
 class Capability(StrEnum):
     IMAGE_FACT_EXTRACTION = "image_fact_extraction"
     GENERAL_TEXT_REASONING = "general_text_reasoning"
+    IMAGE_GROUNDING = "image_grounding"
     FUTURE_IMAGE_GROUNDING = "future_image_grounding"
 
 

@@ -5,6 +5,7 @@ import { AnalysisPanel } from "./AnalysisPanel";
 import { CameraPanel } from "./CameraPanel";
 import { IntentComposer } from "./IntentComposer";
 import { WorkflowProgress } from "./WorkflowProgress";
+import { GroundingPanel } from "./GroundingPanel";
 
 export function StudioWorkspace() {
   const studio = useStudio();
@@ -21,7 +22,7 @@ export function StudioWorkspace() {
       </header>
 
       <div className="mt-6">
-        <WorkflowProgress status={studio.status} />
+        <WorkflowProgress status={studio.status} groundingStatus={studio.groundingStatus} />
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
@@ -30,6 +31,9 @@ export function StudioWorkspace() {
           <IntentComposer studio={studio} />
         </div>
         <AnalysisPanel studio={studio} />
+      </div>
+      <div className="mt-5">
+        <GroundingPanel studio={studio} />
       </div>
     </div>
   );

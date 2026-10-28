@@ -7,11 +7,11 @@ import time
 import uuid
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
-from app import meta_client, provider_router
+from app import grounding_security, meta_client, provider_router, sam_client
 from app.model_types import Capability, ProviderError
 
 app = FastAPI(title="Groundline API", version="0.1.0")
@@ -67,9 +67,54 @@ app.add_middleware(
     allow_origins=_allowed_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "X-Groundline-Access-Token"],
     expose_headers=["X-Correlation-ID"],
 )
+
+
+class GroundingBodyLimitMiddleware:
+    """Bound the grounding JSON body before FastAPI parses its base64 string."""
+
+    def __init__(self, asgi_app, *, limit: int = 6 * 1024 * 1024):
+        self.app = asgi_app
+        self.limit = limit
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http" or scope.get("path") != "/api/ground" or scope.get("method") != "POST":
+            await self.app(scope, receive, send)
+            return
+
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return
+            chunk = message.get("body", b"")
+            total += len(chunk)
+            if total > self.limit:
+                body = b'{"detail":"Grounding request body is too large"}'
+                await send({"type": "http.response.start", "status": 413, "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())]})
+                await send({"type": "http.response.body", "body": body})
+                return
+            chunks.append(chunk)
+            if not message.get("more_body", False):
+                break
+
+        body = b"".join(chunks)
+        delivered = False
+
+        async def replay_receive():
+            nonlocal delivered
+            if delivered:
+                return {"type": "http.request", "body": b"", "more_body": False}
+            delivered = True
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        await self.app(scope, replay_receive, send)
+
+
+app.add_middleware(GroundingBodyLimitMiddleware)
 
 
 class HealthResponse(BaseModel):
@@ -179,6 +224,85 @@ class AnalyzeResponse(BaseModel):
     overall_confidence: float
     usage: UsageModel
     elapsed_ms: int
+
+
+MAX_GROUND_BASE64_CHARS = 5_600_100
+MAX_GROUND_TARGET_CHARS = sam_client.MAX_TARGET_CHARS
+
+
+class GroundingRequest(BaseModel):
+    mime_type: str
+    image_base64: str = Field(max_length=MAX_GROUND_BASE64_CHARS)
+    target_phrase: str
+
+    @field_validator("mime_type")
+    @classmethod
+    def _ground_mime(cls, value: str) -> str:
+        if value not in sam_client.ALLOWED_MIME_FORMATS:
+            raise ValueError("unsupported image type; use PNG, JPEG or WebP")
+        return value
+
+    @field_validator("image_base64")
+    @classmethod
+    def _ground_image_payload(cls, value: str) -> str:
+        try:
+            raw = base64.b64decode(
+                value.split(",", 1)[1] if value.startswith("data:") else value,
+                validate=True,
+            )
+        except (binascii.Error, ValueError, IndexError):
+            raise ValueError("image_base64 is not valid base64 image data")
+        if not raw or len(raw) > MAX_IMAGE_BYTES:
+            raise ValueError("image must be between 1 byte and 4 MiB")
+        return value
+
+    @field_validator("target_phrase")
+    @classmethod
+    def _ground_target(cls, value: str) -> str:
+        try:
+            return sam_client.validate_target_phrase(value)
+        except sam_client.GroundingValidationError as exc:
+            raise ValueError(str(exc)) from exc
+
+
+class GroundBox(BaseModel):
+    x: float
+    y: float
+    width: float
+    height: float
+
+
+class GroundMask(BaseModel):
+    encoding: str
+    path: str
+    width: int
+    height: int
+    bounds: GroundBox
+
+
+class GroundObjectResponse(BaseModel):
+    object_id: str
+    label: str
+    box: GroundBox
+    mask: GroundMask | None
+    score: float | None
+
+
+class GroundingResponse(BaseModel):
+    mode: str
+    provider: str
+    model: str
+    status: str
+    image_width: int
+    image_height: int
+    image_sha256: str
+    target_phrase: str
+    objects: list[GroundObjectResponse]
+    diagnostics: list[dict[str, str]]
+    correlation_id: str
+    response_id: str | None = None
+    elapsed_ms: int
+    estimated_cost_usd: float
 
 
 def _clamp(value: object, default: float = 0.0) -> float:
@@ -310,3 +434,136 @@ def analyze(req: AnalyzeRequest, response: Response) -> AnalyzeResponse:
         ),
         elapsed_ms=result.elapsed_ms,
     )
+
+
+def _ground_error_status(exc: Exception) -> tuple[int, str]:
+    if isinstance(exc, sam_client.GroundingValidationError):
+        return 422, str(exc)
+    if isinstance(exc, sam_client.GroundingTimeoutError):
+        return 504, "Grounding timed out. Do not automatically resubmit until you confirm the previous request ended."
+    if isinstance(exc, sam_client.GroundingConfigurationError):
+        return 503, "Live grounding is not configured."
+    if isinstance(exc, sam_client.GroundingTransportError):
+        return 502, "The grounding provider could not complete the request."
+    if isinstance(exc, sam_client.GroundingResponseError):
+        return 502, "The grounding provider returned an invalid response."
+    return 502, "Grounding failed."
+
+
+@app.post("/api/ground", response_model=GroundingResponse)
+async def ground(
+    req: GroundingRequest,
+    request: Request,
+    response: Response,
+    access_token: str | None = Header(default=None, alias="X-Groundline-Access-Token"),
+) -> GroundingResponse:
+    """Ground one user-selected image and one explicit noun phrase.
+
+    The public forced-MOCK path is nonbillable and returns only an exact-match
+    synthetic fixture. LIVE is disabled unless server-side enablement, a
+    restricted access token and a shared Redis quota store are all available.
+    """
+    cid = uuid.uuid4().hex[:12]
+    response.headers["X-Correlation-ID"] = cid
+    if os.environ.get("GROUNDLINE_FEATURE_GROUNDING_ENABLED") != "1":
+        raise HTTPException(status_code=404, detail="Grounding is not enabled")
+
+    try:
+        raw = _decode_image_payload(req.image_base64)
+        image = sam_client.validate_image(raw, req.mime_type)
+    except sam_client.GroundingValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (binascii.Error, ValueError, IndexError) as exc:
+        raise HTTPException(status_code=422, detail="Image payload is invalid") from exc
+
+    forced_mock = os.environ.get("GROUNDLINE_FORCE_MOCK") == "1"
+    started = time.monotonic()
+    reservation: grounding_security.GroundingReservation | None = None
+    if not forced_mock:
+        if os.environ.get("GROUNDLINE_LIVE_GROUNDING_ENABLED") != "1":
+            raise HTTPException(status_code=503, detail="Live grounding is disabled")
+        if not os.environ.get(sam_client.API_KEY_ENV):
+            raise HTTPException(status_code=503, detail="Live grounding is not configured")
+        if not grounding_security.token_is_valid(access_token):
+            raise HTTPException(status_code=401, detail="Restricted grounding access is required")
+        client_ip = request.client.host if request.client else "unknown"
+        try:
+            reservation = await grounding_security.reserve_live_grounding(
+                access_token=access_token or "", client_ip=client_ip
+            )
+        except grounding_security.GroundingQuotaExceeded as exc:
+            raise HTTPException(status_code=429, detail="Grounding request quota exceeded") from exc
+        except grounding_security.GroundingQuotaUnavailable as exc:
+            raise HTTPException(status_code=503, detail="Shared grounding quota is unavailable") from exc
+
+    try:
+        result = await provider_router.ground_image(
+            image=image, target_phrase=req.target_phrase
+        )
+        mode = "live" if result is not None and not forced_mock else "MOCK"
+        status = (
+            "mock_unavailable" if result is None and forced_mock
+            else "no_match" if result is not None and not result.objects
+            else "completed"
+        )
+        objects: list[GroundObjectResponse] = []
+        if result is not None:
+            for item in result.objects:
+                mask = None
+                if item.mask_path is not None and item.mask_bounds is not None:
+                    mask = GroundMask(
+                        encoding="svg-path",
+                        path=item.mask_path,
+                        width=item.mask_width or 0,
+                        height=item.mask_height or 0,
+                        bounds=GroundBox(
+                            x=item.mask_bounds["x"] / image.width,
+                            y=item.mask_bounds["y"] / image.height,
+                            width=item.mask_bounds["width"] / image.width,
+                            height=item.mask_bounds["height"] / image.height,
+                        ),
+                    )
+                objects.append(GroundObjectResponse(
+                    object_id=item.object_id,
+                    label=req.target_phrase,
+                    box=GroundBox(
+                        x=item.x, y=item.y, width=item.width, height=item.height
+                    ),
+                    mask=mask,
+                    score=item.score,
+                ))
+        elapsed = result.elapsed_ms if result is not None else int((time.monotonic() - started) * 1000)
+        cost = result.estimated_cost_usd if mode == "live" and result else 0.0
+        model = result.model if result else sam_client.MODEL_ID
+        if status == "no_match":
+            status = "no_match"
+        logger.info(
+            "ground cid=%s mode=%s model=%s status=%s target_len=%d objects=%d elapsed_ms=%d estimated_cost_usd=%.6f",
+            cid, mode, model, status, len(req.target_phrase), len(objects), elapsed, cost,
+        )
+        return GroundingResponse(
+            mode=mode,
+            provider="meta-sam" if mode == "live" else "synthetic-fixture",
+            model=model,
+            status=status,
+            image_width=image.width,
+            image_height=image.height,
+            image_sha256=image.sha256,
+            target_phrase=req.target_phrase,
+            objects=objects,
+            diagnostics=list(result.diagnostics) if result else [],
+            correlation_id=cid,
+            response_id=result.response_id if result else None,
+            elapsed_ms=elapsed,
+            estimated_cost_usd=cost,
+        )
+    except sam_client.GroundingError as exc:
+        status_code, message = _ground_error_status(exc)
+        logger.warning("ground cid=%s status=error error=%s", cid, type(exc).__name__)
+        raise HTTPException(status_code=status_code, detail=message) from exc
+    finally:
+        if reservation is not None:
+            try:
+                await reservation.release()
+            except Exception:
+                logger.error("ground cid=%s quota_release=failed", cid)

@@ -7,7 +7,7 @@ import { Reveal } from "@/components/design/Reveal";
 import { SectionHeading } from "@/components/design/SectionHeading";
 import { StatusPill } from "@/components/design/StatusPill";
 
-const FEATURES: { slug: string; icon: LucideIcon; title: string; body: string; state: "available" | "mock" | "planned" }[] = [
+const FEATURES: { slug: string; icon: LucideIcon; title: string; body: string; state: "available" | "mock" | "restricted" | "planned" }[] = [
   { slug: "camera-capture", icon: Camera, title: "Camera capture", body: "Start the camera only when you choose, frame a label, and capture a still.", state: "available" },
   { slug: "image-upload", icon: FileImage, title: "Image upload", body: "Use a PNG, JPEG, or WebP image with client and server validation.", state: "available" },
   { slug: "typed-objectives", icon: MessageSquareText, title: "Your typed objective", body: "Tell Groundline what you want to find in your own words.", state: "available" },
@@ -15,7 +15,7 @@ const FEATURES: { slug: string; icon: LucideIcon; title: string; body: string; s
   { slug: "human-review", icon: PencilLine, title: "Human correction", body: "Edit or confirm extracted fields before using them elsewhere.", state: "available" },
   { slug: "source-labeling", icon: BadgeCheck, title: "Source labeling", body: "Results identify whether they came from a model or a sample fixture.", state: "available" },
   { slug: "credential-safety", icon: LockKeyhole, title: "Backend-only credentials", body: "Provider keys stay on the API server and are never bundled into the browser.", state: "available" },
-  { slug: "visual-grounding", icon: Crosshair, title: "Visual region grounding", body: "Show which part of the image informed a field.", state: "planned" },
+  { slug: "visual-grounding", icon: Crosshair, title: "Visual region grounding", body: "Inspect SAM 3.1 object regions over the selected source image.", state: "restricted" },
 ];
 
 export function Features() {
@@ -26,7 +26,7 @@ export function Features() {
           <SectionHeading
             eyebrow="What you can do"
             title="Useful image understanding, with the person in charge"
-            subtitle="Groundline keeps the working capture, upload, typed-intent, and review flow distinct from capabilities that are still planned."
+            subtitle="Capture, upload, analysis, and field review are available. Visual grounding is a restricted sample preview; action preparation remains planned."
           />
         </Reveal>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -40,6 +40,7 @@ export function Features() {
                 <p className="flex-1 text-sm leading-relaxed text-ink-soft">{body}</p>
                 {state === "available" && <StatusPill tone="success">Available</StatusPill>}
                 {state === "mock" && <StatusPill tone="mock">Available · MOCK demo</StatusPill>}
+                {state === "restricted" && <StatusPill tone="purple">Restricted preview</StatusPill>}
                 {state === "planned" && <StatusPill tone="purple">Planned</StatusPill>}
                 <span className="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-navy">Feature details <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden="true" /></span>
               </Link>

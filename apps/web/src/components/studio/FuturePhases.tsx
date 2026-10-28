@@ -1,14 +1,9 @@
-import { Crosshair, ClipboardCheck, UserCheck } from "lucide-react";
+import { ClipboardCheck, UserCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { StatusPill } from "@/components/design/StatusPill";
 
 const PHASES: { icon: LucideIcon; title: string; body: string }[] = [
-  {
-    icon: Crosshair,
-    title: "Visual grounding",
-    body: "Highlight the exact region behind each field. Not yet available.",
-  },
   {
     icon: ClipboardCheck,
     title: "Action plan",

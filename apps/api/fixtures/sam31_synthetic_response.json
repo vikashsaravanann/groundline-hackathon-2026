@@ -1,0 +1,18 @@
+{
+  "provenance": "SYNTHETIC_OFFLINE_FIXTURE",
+  "description": "Hand-authored mask for the fictional vector desk lamp shown in sam31_synthetic_image.png; never a recorded SAM response.",
+  "model": "sam-3.1",
+  "target_phrase": "desk lamp",
+  "image_width": 800,
+  "image_height": 600,
+  "image_sha256": "fce3f287f1ec5ec8543a0f008d3269f5ad46feff6310b1d00e41c68262fa2048",
+  "output_text": "<0f>0<|box;x1=190;y1=105;x2=475;y2=524;w=800;h=600|><|mask;x=0;y=0;data=210,143,!!!!#g4GX/pH&v`CC(YAfD4.nztSz7Uo7joHZhh.w-SJ=xtGiHicm-^n.DPmc21{esB-AQ?7vqS&H&2xLF[Yt[eXb42@t3E_xmbBQpuBicNXyYS-X$woZSz`3m.vmDHyHFdLphVn?'prBs.8aq@@_3Qkgta_6OzW9(9#*@@/e[@mQQgi53y^DCknsJrgH0$!!|>",
+  "expected_object_id": "0",
+  "expected_box_pixels": {
+    "left": 190,
+    "top": 105,
+    "right": 476,
+    "bottom": 525
+  },
+  "mask_encoding": "one_bit"
+}

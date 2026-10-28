@@ -7,6 +7,7 @@ from typing import Protocol
 from app.baseten_client import BasetenClient
 from app.meta_client import MetaClient, _objective_instruction
 from app.meta_client import ALLOWED_EFFORTS
+from app import sam_client
 from app.model_types import (
     Capability,
     ModelResult,
@@ -31,6 +32,7 @@ PROVIDERS: dict[str, Provider] = {"meta": META, "baseten": BASETEN}
 DEFAULT_ROUTES: dict[Capability, str | None] = {
     Capability.IMAGE_FACT_EXTRACTION: "meta",
     Capability.GENERAL_TEXT_REASONING: None,
+    Capability.IMAGE_GROUNDING: "meta-sam",
     Capability.FUTURE_IMAGE_GROUNDING: None,
 }
 
@@ -48,6 +50,12 @@ def provider_for(capability: Capability) -> Provider:
         raise ProviderConfigurationError(
             f"No provider is enabled for capability {capability.value!r}"
         )
+    if capability is Capability.IMAGE_GROUNDING:
+        if selected.strip().lower() != "meta-sam":
+            raise ProviderConfigurationError(
+                "Only the hosted Meta SAM provider supports image grounding"
+            )
+        return SAM_ROUTER_PROVIDER  # type: ignore[return-value]
     provider = PROVIDERS.get(selected.strip().lower())
     if provider is None or capability not in provider.capabilities:
         raise ProviderConfigurationError(
@@ -56,12 +64,49 @@ def provider_for(capability: Capability) -> Provider:
     return provider
 
 
+class _SamRouterProvider:
+    """Capability marker; segmentation uses its typed stream interface."""
+    name = "meta-sam"
+    capabilities = frozenset({Capability.IMAGE_GROUNDING})
+    key_env = sam_client.API_KEY_ENV
+    fixture = "sam31_synthetic_response.json"
+
+    def parse(self, body: dict, *, elapsed_ms: int, mode: str):
+        raise ProviderConfigurationError("Use ground_image for the segmentation capability")
+
+    def load_fixture(self) -> dict:
+        raise ProviderConfigurationError("Use ground_image to load the segmentation fixture")
+
+
+SAM_ROUTER_PROVIDER = _SamRouterProvider()
+
+
 def use_mock(capability: Capability) -> bool:
     """The platform force flag overrides every provider and credential."""
     if os.environ.get("GROUNDLINE_FORCE_MOCK") == "1":
         return True
+    if capability is Capability.IMAGE_GROUNDING:
+        # Missing credentials is an error for this feature, not an implicit fixture.
+        return False
     provider = provider_for(capability)
     return not os.environ.get(provider.key_env)
+
+
+async def ground_image(*, image: sam_client.ValidatedImage, target_phrase: str):
+    """Route SAM grounding by capability; no fallback after a LIVE error."""
+    provider_for(Capability.IMAGE_GROUNDING)
+    if os.environ.get("GROUNDLINE_FORCE_MOCK") == "1":
+        fixture = sam_client.mock_fixture_for(image, target_phrase)
+        if fixture is None:
+            return None
+        return await sam_client.parse_mock_fixture(
+            fixture, image=image, target_phrase=target_phrase
+        )
+    if not os.environ.get(sam_client.API_KEY_ENV):
+        raise sam_client.GroundingConfigurationError(
+            "Meta SAM credential is not configured"
+        )
+    return await sam_client.complete_live(image=image, target_phrase=target_phrase)
 
 
 def call_model(

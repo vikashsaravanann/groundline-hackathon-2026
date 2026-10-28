@@ -18,5 +18,11 @@ services:
     envVars:
       - key: GROUNDLINE_FORCE_MOCK
         value: "1"
+      - key: GROUNDLINE_FEATURE_GROUNDING_ENABLED
+        value: "1"
+      - key: GROUNDLINE_PROVIDER_IMAGE_GROUNDING
+        value: "meta-sam"
+      - key: GROUNDLINE_LIVE_GROUNDING_ENABLED
+        value: "0"
       - key: ALLOWED_ORIGINS
         sync: false

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 type WorkflowStage = {
   number: string;
   title: string;
-  status: "available" | "mock" | "planned";
+  status: "available" | "mock" | "restricted" | "planned";
   icon: LucideIcon;
   intro: string;
   details: string[];
@@ -54,12 +54,15 @@ const stages: WorkflowStage[] = [
   {
     number: "03",
     title: "Ground",
-    status: "planned",
+    status: "restricted",
     icon: Crosshair,
-    intro: "Groundline is planned to show the image region that supports an extracted field.",
+    intro: "Groundline includes an explicit SAM 3.1 grounding preview that overlays returned object geometry on the submitted image.",
     details: [
-      "Visual region grounding and SAM integration are not part of the current working flow.",
-      "This stage will be marked available only after its model path and image overlay are implemented and tested.",
+      "After image analysis, review the suggested short object phrase or enter a correction, then explicitly press Ground object.",
+      "In a restricted LIVE configuration, the API validates the same image bytes, requests SAM 3.1, and returns parsed boxes and masks with source-image dimensions and a SHA-256 digest.",
+      "The Studio checks that the response belongs to the currently selected image and scales the geometry over its original aspect ratio.",
+      "Public production remains forced to MOCK. A hand-authored synthetic fixture is available only for its exact sample image; live SAM is restricted and quota-gated.",
+      "A region match does not prove that nearby OCR text came from that region. Review both independently.",
     ],
   },
   {
@@ -89,6 +92,7 @@ const stages: WorkflowStage[] = [
 function stageStatus(status: WorkflowStage["status"]) {
   if (status === "available") return <StatusPill tone="success">Available</StatusPill>;
   if (status === "mock") return <StatusPill tone="mock">Available · MOCK demo</StatusPill>;
+  if (status === "restricted") return <StatusPill tone="purple">Restricted preview</StatusPill>;
   return <StatusPill tone="purple">Planned</StatusPill>;
 }
 
@@ -105,7 +109,7 @@ export default function WorkflowPage() {
             <SectionHeading
               eyebrow="The Groundline workflow"
               title="From a physical label to a result you can review"
-              subtitle="Capture and Understand are the current practical flow. The remaining stages describe the product direction and stay marked Planned until verified."
+              subtitle="Capture and Understand are the core flow. Ground has a restricted, exact-fixture MOCK preview; Prepare and the full approval timeline remain Planned."
             />
           </Reveal>
 

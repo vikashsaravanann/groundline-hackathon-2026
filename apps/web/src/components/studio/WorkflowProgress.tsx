@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { StudioStatus } from "@/types/studio";
+import type { GroundingStatus, StudioStatus } from "@/types/studio";
 
 interface Step {
   key: string;
@@ -10,23 +10,25 @@ interface Step {
 const STEPS: Step[] = [
   { key: "capture", label: "Capture" },
   { key: "analyze", label: "Analyze" },
-  { key: "ground", label: "Ground", planned: true },
+  { key: "ground", label: "Ground" },
   { key: "prepare", label: "Prepare", planned: true },
   { key: "review", label: "Review", planned: true },
 ];
 
-function activeKey(status: StudioStatus): string {
+function activeKey(status: StudioStatus, groundingStatus: GroundingStatus): string {
+  if (["grounding", "completed", "no-match", "mock-unavailable", "error"].includes(groundingStatus)) return "ground";
   if (status === "validating" || status === "analyzing") return "analyze";
   if (status === "completed") return "analyze";
   return "capture";
 }
 
-export function WorkflowProgress({ status }: { status: StudioStatus }) {
-  const active = activeKey(status);
+export function WorkflowProgress({ status, groundingStatus = "idle" }: { status: StudioStatus; groundingStatus?: GroundingStatus }) {
+  const active = activeKey(status, groundingStatus);
   const activeIndex = STEPS.findIndex((s) => s.key === active);
   const captureDone = status === "captured" || status === "completed" ||
     status === "validating" || status === "analyzing";
-  const analyzeDone = status === "completed";
+  const analyzeDone = status === "completed" && !["grounding", "completed", "no-match", "mock-unavailable", "error"].includes(groundingStatus);
+  const groundDone = ["completed", "no-match"].includes(groundingStatus);
 
   return (
     <div
@@ -40,7 +42,8 @@ export function WorkflowProgress({ status }: { status: StudioStatus }) {
           const isActive = i === activeIndex && !step.planned;
           const done =
             (step.key === "capture" && captureDone) ||
-            (step.key === "analyze" && analyzeDone);
+            (step.key === "analyze" && analyzeDone) ||
+            (step.key === "ground" && groundDone);
           return (
             <li key={step.key} className="relative flex min-w-0 flex-1 justify-center">
               <span

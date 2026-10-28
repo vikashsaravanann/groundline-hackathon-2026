@@ -3,10 +3,12 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { ApiError, analyzeImage } from "@/lib/api";
+import { groundImage } from "@/lib/grounding";
 import { MAX_OBJECTIVE_CHARS } from "@/lib/config";
 import { captureFromVideo, imageFromFile } from "@/lib/image";
 import type { AnalysisResult } from "@/types/analysis";
-import type { SelectedImage, StudioError, StudioStatus } from "@/types/studio";
+import type { GroundingResult } from "@/types/grounding";
+import type { GroundingStatus, SelectedImage, StudioError, StudioStatus } from "@/types/studio";
 import { type CameraController, useCamera } from "./useCamera";
 
 export interface Studio {
@@ -16,6 +18,10 @@ export interface Studio {
   image: SelectedImage | null;
   objective: string;
   result: AnalysisResult | null;
+  groundingStatus: GroundingStatus;
+  groundingResult: GroundingResult | null;
+  groundingError: StudioError | null;
+  targetPhrase: string;
   error: StudioError | null;
   objectiveValid: boolean;
   canAnalyze: boolean;
@@ -29,6 +35,10 @@ export interface Studio {
   cancel: () => void;
   confirmField: (id: string) => void;
   editField: (id: string, value: string) => void;
+  setTargetPhrase: (value: string) => void;
+  ground: (accessToken?: string) => Promise<void>;
+  cancelGrounding: () => void;
+  clearGrounding: () => void;
   reset: () => void;
 }
 
@@ -38,6 +48,10 @@ export function useStudio(): Studio {
   const [image, setImage] = useState<SelectedImage | null>(null);
   const [objective, setObjective] = useState("");
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [groundingStatus, setGroundingStatus] = useState<GroundingStatus>("idle");
+  const [groundingResult, setGroundingResult] = useState<GroundingResult | null>(null);
+  const [groundingError, setGroundingError] = useState<StudioError | null>(null);
+  const [targetPhrase, setTargetPhraseState] = useState("");
   const [error, setError] = useState<StudioError | null>(null);
   const [capturing, setCapturing] = useState(false);
   const captureInProgress = useRef(false);
@@ -45,6 +59,32 @@ export function useStudio(): Studio {
   // Guards against a stale response landing after cancel / a newer request.
   const requestSeq = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const groundingSeq = useRef(0);
+  const groundingAbortRef = useRef<AbortController | null>(null);
+  const imageRef = useRef<SelectedImage | null>(null);
+  const targetPhraseRef = useRef("");
+
+  const clearGrounding = useCallback(() => {
+    groundingSeq.current++;
+    groundingAbortRef.current?.abort();
+    groundingAbortRef.current = null;
+    setGroundingStatus("idle");
+    setGroundingResult(null);
+    setGroundingError(null);
+  }, []);
+
+  const setSelectedImage = useCallback((next: SelectedImage | null) => {
+    imageRef.current = next;
+    setImage(next);
+    clearGrounding();
+  }, [clearGrounding]);
+
+  const setTargetPhrase = useCallback((value: string) => {
+    targetPhraseRef.current = value;
+    setTargetPhraseState(value);
+    clearGrounding();
+    setGroundingStatus(value.trim() ? "ready" : "idle");
+  }, [clearGrounding]);
 
   const objectiveValid = useMemo(() => {
     const len = objective.trim().length;
@@ -56,7 +96,7 @@ export function useStudio(): Studio {
   const startCamera = useCallback(async () => {
     // Retake must remove the previous still before requesting a fresh stream;
     // otherwise the still-preview branch hides the newly attached video.
-    setImage(null);
+    setSelectedImage(null);
     setError(null);
     setResult(null);
     setStatus("requesting-camera");
@@ -67,7 +107,7 @@ export function useStudio(): Studio {
       setStatus("error");
       setError(r.error ?? null);
     }
-  }, [camera]);
+  }, [camera, setSelectedImage]);
 
   const stopCamera = useCallback(() => {
     camera.stop();
@@ -82,7 +122,7 @@ export function useStudio(): Studio {
     setCapturing(true);
     try {
       const snap = await captureFromVideo(v, captureFrame);
-      setImage(snap);
+      setSelectedImage(snap);
       camera.stop(); // pause the stream once we have the still
       setResult(null);
       setError(null);
@@ -98,15 +138,16 @@ export function useStudio(): Studio {
       captureInProgress.current = false;
       setCapturing(false);
     }
-  }, [camera]);
+  }, [camera, setSelectedImage]);
 
   const selectFile = useCallback(async (file: File) => {
     setStatus("validating");
     setError(null);
     setResult(null);
+    clearGrounding();
     try {
       const img = await imageFromFile(file);
-      setImage(img);
+      setSelectedImage(img);
       camera.stop();
       setStatus("captured");
     } catch (err) {
@@ -117,14 +158,14 @@ export function useStudio(): Studio {
         hint: "Choose a PNG, JPEG or WebP image under 4 MB of content.",
       });
     }
-  }, [camera]);
+  }, [camera, setSelectedImage, clearGrounding]);
 
   const removeImage = useCallback(() => {
-    setImage(null);
+    setSelectedImage(null);
     setResult(null);
     setError(null);
     setStatus("idle");
-  }, []);
+  }, [setSelectedImage]);
 
   const analyze = useCallback(async () => {
     if (!image || !objectiveValid) return;
@@ -142,6 +183,10 @@ export function useStudio(): Studio {
       });
       if (seq !== requestSeq.current) return; // a newer request / cancel won
       setResult(res);
+      const suggestedTarget = res.detectedObject?.trim() ?? "";
+      targetPhraseRef.current = suggestedTarget;
+      setTargetPhraseState(suggestedTarget);
+      clearGrounding();
       setStatus("completed");
     } catch (err) {
       if (seq !== requestSeq.current) return; // cancelled; ignore
@@ -163,7 +208,7 @@ export function useStudio(): Studio {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [image, objective, objectiveValid]);
+  }, [image, objective, objectiveValid, clearGrounding]);
 
   const cancel = useCallback(() => {
     requestSeq.current++; // invalidate the in-flight response
@@ -171,6 +216,56 @@ export function useStudio(): Studio {
     abortRef.current = null;
     setStatus(image ? "captured" : "idle");
   }, [image]);
+
+  const cancelGrounding = useCallback(() => {
+    groundingSeq.current++;
+    groundingAbortRef.current?.abort();
+    groundingAbortRef.current = null;
+    setGroundingStatus("cancelled");
+  }, []);
+
+  const ground = useCallback(async (accessToken?: string) => {
+    if (!image || !result || status !== "completed") return;
+    const phrase = targetPhrase.trim();
+    if (!phrase) {
+      setGroundingStatus("error");
+      setGroundingError({ kind: "validation", message: "Enter one object to ground.", hint: "Use a short noun phrase such as desk lamp." });
+      return;
+    }
+    const sequence = ++groundingSeq.current;
+    const sourceImage = image;
+    const controller = new AbortController();
+    groundingAbortRef.current = controller;
+    setGroundingStatus("grounding");
+    setGroundingError(null);
+    try {
+      const grounded = await groundImage({
+        base64: sourceImage.base64,
+        mimeType: sourceImage.mimeType,
+        width: sourceImage.width,
+        height: sourceImage.height,
+        targetPhrase: phrase,
+        accessToken,
+        signal: controller.signal,
+      });
+      if (sequence !== groundingSeq.current || imageRef.current?.base64 !== sourceImage.base64 || targetPhraseRef.current.trim() !== phrase) return;
+      setGroundingResult(grounded);
+      setGroundingStatus(grounded.status === "no_match" ? "no-match" : grounded.status === "mock_unavailable" ? "mock-unavailable" : "completed");
+    } catch (err) {
+      if (sequence !== groundingSeq.current) return;
+      const failure: StudioError = err instanceof ApiError
+        ? { kind: err.kind, message: err.message, hint: err.hint }
+        : { kind: "unknown", message: err instanceof Error ? err.message : "Grounding failed.", hint: "Check the image and try again only after confirming the previous request ended." };
+      if (failure.message.includes("cancelled")) {
+        setGroundingStatus("cancelled");
+        return;
+      }
+      setGroundingError(failure);
+      setGroundingStatus("error");
+    } finally {
+      if (groundingAbortRef.current === controller) groundingAbortRef.current = null;
+    }
+  }, [image, result, status, targetPhrase]);
 
   const confirmField = useCallback((id: string) => {
     setResult((prev) =>
@@ -203,12 +298,15 @@ export function useStudio(): Studio {
     abortRef.current?.abort();
     abortRef.current = null;
     camera.stop();
-    setImage(null);
+    setSelectedImage(null);
     setResult(null);
     setError(null);
+    targetPhraseRef.current = "";
+    setTargetPhraseState("");
+    clearGrounding();
     // Keep the objective: a recoverable reset should not lose the user's words.
     setStatus("idle");
-  }, [camera]);
+  }, [camera, setSelectedImage, clearGrounding]);
 
   return {
     status,
@@ -217,6 +315,10 @@ export function useStudio(): Studio {
     image,
     objective,
     result,
+    groundingStatus,
+    groundingResult,
+    groundingError,
+    targetPhrase,
     error,
     objectiveValid,
     canAnalyze,
@@ -230,6 +332,10 @@ export function useStudio(): Studio {
     cancel,
     confirmField,
     editField,
+    setTargetPhrase,
+    ground,
+    cancelGrounding,
+    clearGrounding,
     reset,
   };
 }

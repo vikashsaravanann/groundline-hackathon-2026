@@ -2,7 +2,7 @@ export type FeatureDetail = {
   slug: string;
   title: string;
   summary: string;
-  status: "Available" | "Available · MOCK demo" | "Planned";
+  status: "Available" | "Available · MOCK demo" | "Available · restricted preview" | "Planned";
   whatItDoes: string;
   howItWorks: string[];
   limits: string[];
@@ -53,9 +53,9 @@ export const features: FeatureDetail[] = [
     limits: ["Credential isolation does not by itself protect a paid endpoint from abuse.", "Public LIVE inference remains disabled until server-side access, quota, and spending controls are in place."], nextStep: { label: "Read the security page", href: "/legal/security" },
   },
   {
-    slug: "visual-grounding", title: "Visual region grounding", summary: "A planned capability to connect extracted facts to the image area that supports them.", status: "Planned",
-    whatItDoes: "Grounding is intended to help a person inspect where a proposed fact appears in an image.",
-    howItWorks: ["A future system may associate a field with a region or mask.", "The interface could show that region alongside the proposed value.", "A person would still verify the match."],
-    limits: ["Visual grounding and SAM segmentation are not implemented in the current workflow.", "There are no working controls for this planned stage."], nextStep: { label: "See the full workflow", href: "/how-it-works" },
+    slug: "visual-grounding", title: "Visual region grounding", summary: "Inspect a SAM 3.1 object region over the exact image submitted for grounding.", status: "Available · restricted preview",
+    whatItDoes: "The Studio can send a short object phrase and the selected image to the hosted SAM 3.1 adapter, then display validated object boxes and masks when returned. Public production remains forced to MOCK; its deterministic preview only matches the included synthetic lamp image.",
+    howItWorks: ["Complete image analysis, then review or edit the suggested object phrase.", "Press Ground object to make a separate, explicit grounding request.", "Inspect the returned object geometry over the same image and confirm or reject the selection."],
+    limits: ["The public deployment does not make live SAM requests. Live requests require restricted access and a configured shared quota store.", "The bundled fixture is synthetic and is not a captured model result. A segmented object does not verify nearby extracted text."], nextStep: { label: "Open Studio", href: "/studio" },
   },
 ];

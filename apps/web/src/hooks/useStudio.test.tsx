@@ -2,6 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useStudio } from "@/hooks/useStudio";
+import { analyzeImage } from "@/lib/api";
+import { groundImage } from "@/lib/grounding";
 import { imageFromFile } from "@/lib/image";
 import type { SelectedImage } from "@/types/studio";
 
@@ -9,6 +11,33 @@ vi.mock("@/lib/image", () => ({
   captureFromVideo: vi.fn(),
   imageFromFile: vi.fn(),
 }));
+vi.mock("@/lib/grounding", () => ({ groundImage: vi.fn() }));
+vi.mock("@/lib/api", () => ({
+  ApiError: class ApiError extends Error {},
+  analyzeImage: vi.fn(),
+}));
+
+const selected: SelectedImage = {
+  dataUrl: "data:image/png;base64,AAAA",
+  base64: "AAAA",
+  mimeType: "image/png",
+  bytes: 3,
+  width: 10,
+  height: 10,
+  origin: "upload",
+};
+
+const analysis = {
+  analysisId: "analysis-1", source: "mock", status: "completed", summary: "sample",
+  detectedObject: "desk lamp", fields: [], cautions: [], analyzedAt: "2026-10-28T00:00:00Z",
+  model: "fixture", usage: null,
+};
+
+const groundResult = {
+  mode: "MOCK", provider: "synthetic-fixture", model: "sam-3.1", status: "completed",
+  imageWidth: 10, imageHeight: 10, imageSha256: "a".repeat(64), targetPhrase: "desk lamp",
+  objects: [], diagnostics: [], correlationId: "c1", responseId: null, elapsedMs: 0, estimatedCostUsd: 0,
+} as const;
 
 function setMediaDevices(value: unknown) {
   Object.defineProperty(navigator, "mediaDevices", {
@@ -21,6 +50,12 @@ function setMediaDevices(value: unknown) {
 describe("useStudio", () => {
   beforeEach(() => setMediaDevices(undefined));
   afterEach(() => vi.restoreAllMocks());
+
+  beforeEach(() => {
+    vi.mocked(imageFromFile).mockReset();
+    vi.mocked(analyzeImage).mockReset();
+    vi.mocked(groundImage).mockReset();
+  });
 
   it("starts idle and never touches the camera on mount", () => {
     const getUserMedia = vi.fn();
@@ -80,5 +115,29 @@ describe("useStudio", () => {
     expect(result.current.image).toBeNull();
     expect(result.current.status).toBe("camera-ready");
     expect(getUserMedia).toHaveBeenCalledTimes(1);
+  });
+
+  it("discards a late grounding result after the target phrase changes", async () => {
+    vi.mocked(imageFromFile).mockResolvedValue(selected);
+    vi.mocked(analyzeImage).mockResolvedValue(analysis as never);
+    let resolveGrounding!: (value: typeof groundResult) => void;
+    vi.mocked(groundImage).mockImplementation(() => new Promise((resolve) => { resolveGrounding = resolve; }));
+
+    const { result } = renderHook(() => useStudio());
+    await act(async () => result.current.selectFile(new File(["synthetic"], "sample.png", { type: "image/png" })));
+    act(() => result.current.setObjective("Identify the visible label information"));
+    await act(async () => result.current.analyze());
+    expect(result.current.targetPhrase).toBe("desk lamp");
+
+    let pending!: Promise<void>;
+    act(() => { pending = result.current.ground(); });
+    expect(result.current.groundingStatus).toBe("grounding");
+    act(() => result.current.setTargetPhrase("product box"));
+    await act(async () => {
+      resolveGrounding(groundResult);
+      await pending;
+    });
+    expect(result.current.groundingResult).toBeNull();
+    expect(result.current.groundingStatus).toBe("ready");
   });
 });

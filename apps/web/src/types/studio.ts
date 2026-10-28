@@ -44,3 +44,13 @@ export interface StudioError {
   message: string;
   hint: string;
 }
+
+export type GroundingStatus =
+  | "idle"
+  | "ready"
+  | "grounding"
+  | "completed"
+  | "no-match"
+  | "mock-unavailable"
+  | "error"
+  | "cancelled";
