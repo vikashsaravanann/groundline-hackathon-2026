@@ -111,6 +111,7 @@ class GroundingResult:
     total_tokens: int
     estimated_cost_usd: float
     response_id: str | None
+    raw_output_text: str
 
 
 def _safe_token_count(value: object) -> int:
@@ -352,6 +353,7 @@ async def parse_event_source(
         total_tokens=_safe_token_count((usage or {}).get("total_tokens")),
         estimated_cost_usd=0.0,
         response_id=response_id,
+        raw_output_text="".join(output_parts),
     )
 
 
@@ -417,7 +419,7 @@ async def parse_mock_fixture(
 
 async def complete_live(
     *, image: ValidatedImage, target_phrase: str, api_key: str | None = None,
-    timeout: float = 45.0,
+    timeout: float = 45.0, max_attempts: int = 2,
 ) -> GroundingResult:
     key = api_key or os.environ.get(API_KEY_ENV)
     if not key:
@@ -429,10 +431,12 @@ async def complete_live(
     response_usage: dict[str, Any] = {}
     completed = False
     result: GroundingResult | None = None
+    if max_attempts not in (1, 2):
+        raise ValueError("max_attempts must be 1 or 2")
     # A single retry is allowed only for failures before a connection is
     # established. Never retry a read/overall timeout: Meta may have processed
     # and billed the request even if the client did not receive its response.
-    for attempt in range(2):
+    for attempt in range(max_attempts):
         response_id = None
         response_usage.clear()
         completed = False
@@ -481,9 +485,9 @@ async def complete_live(
                         )
             break
         except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
-            if attempt == 0:
+            if attempt + 1 < max_attempts:
                 continue
-            raise GroundingTransportError("Meta SAM connection failed after one safe retry") from exc
+            raise GroundingTransportError("Meta SAM connection failed before a response was received") from exc
         except (asyncio.TimeoutError, httpx.TimeoutException) as exc:
             raise GroundingTimeoutError(
                 "Meta SAM request timed out; its upstream completion is uncertain, so it was not retried"
@@ -512,4 +516,5 @@ async def complete_live(
         total_tokens=result.total_tokens,
         estimated_cost_usd=IMAGE_PRICE_ESTIMATE_USD,
         response_id=response_id,
+        raw_output_text=result.raw_output_text,
     )

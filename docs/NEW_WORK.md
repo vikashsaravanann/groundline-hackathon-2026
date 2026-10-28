@@ -261,11 +261,42 @@ outline. If Spark returns no position or fails, the API retains only the
 SAM-backed label region, reports the field stage status, and returns no field
 box.
 
-Offline verification: backend `pytest` **120 passed**; frontend lint and
-TypeScript passed; Vitest **44 passed**; Next.js production build passed; API
-`pip check` found no broken requirements. No new live provider calls were made:
-the local Meta credential was unavailable in the authorized environment.
-Consequently, this run used zero live tokens and incurred no new provider cost.
-Recorded SAM token usage and the synthetic Spark fixture's zero usage are not
-new live-call measurements. Live verification of the complete two-model chain
-remains pending an authorized environment containing the Meta credential.
+### Controlled live check — 28 October 2026
+
+The local `apps/api/.env` was sourced into a non-verbose shell. Credential
+presence was checked without printing its value. Exactly two live HTTP requests
+were made, with no retries:
+
+| Stage | Evidence | Result | Usage | Estimated cost |
+|---|---|---|---|---:|
+| SAM 3.1 label | `sam-3.1`, `white rectangle`, synthetic source image 1200 × 820 | HTTP 200, completed; one box `(140,110)`–`(1059,708)` inclusive, 920 × 599 px; confidence `0.5460992455` | 0 input, 0 output, 0 total text tokens; one image processed | $0.002500 image-rate estimate |
+| Muse Spark field | `muse-spark-1.3`, same label crop 920 × 599 px, low effort, `store=false`, output cap 256 | HTTP 200, **incomplete** (`max_output_tokens`); no output text, no field box, no field confidence | 796 input, 256 output (254 reasoning), 1,052 total | $0.002083 token-rate estimate |
+
+Combined estimated cost: **$0.004583**. These are estimates derived from the
+provider image-rate and the repository's configured Muse token rates, not an
+invoice charge. No retry was made. The two-stage chain therefore verified the
+SAM label stage and Spark endpoint reachability, but **did not verify successful
+field localization**. No Spark geometry or confidence was fabricated; the
+correct result for the live attempt is label-only fallback. The crop request's
+bounded output cap was raised from 256 to 512 after this result, with an
+offline assertion that the adapter still makes only one attempt. This revised
+cap has not been live-verified.
+
+Fixture provenance after the live check:
+
+- Authentic: `sam31_label_replay.json` and the prompt-discovery SAM sidecars
+  are recorded live SAM results; `muse_spark_model_number_position.json` now
+  contains the authentic incomplete Spark response from this two-stage attempt;
+  `muse_spark_image_response.json` remains the previously captured live
+  whole-image Muse response.
+- Synthetic: `synthetic_product_label.png`,
+  `muse_spark_model_number_position_synthetic.json`,
+  `spark_model_number_crop.png` (a synthetic-image crop), and all five
+  `fixtures/adversarial/*.json` response fixtures. The synthetic positive Spark
+  response is retained for offline success-path tests and only serves as MOCK.
+
+Final local suite: backend `pytest` **123 passed**; API `pip check` clean;
+frontend lint and TypeScript passed; Vitest **44 passed**; Next.js production
+build passed. A follow-up test ensures the authentic incomplete response
+remains an error and the MOCK success path continues to use the explicitly
+synthetic fixture. CI contains no live provider calls.

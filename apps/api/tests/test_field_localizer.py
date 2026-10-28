@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from app import field_localizer, sam_client
-from app.model_types import ModelResult, Usage
+from app import field_localizer, meta_client, provider_router, sam_client
+from app.model_types import ModelResult, ProviderResponseError, Usage
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 
@@ -47,6 +47,40 @@ def test_model_number_position_maps_from_crop_to_original_fractional_space():
     assert parsed.field.y == pytest.approx(360 / 820)
     assert parsed.field.width == pytest.approx(347 / 1200)
     assert parsed.field.height == pytest.approx(40 / 820)
+
+
+def test_authentic_incomplete_spark_response_is_not_treated_as_a_field_result():
+    authentic = json.loads((FIXTURES / "muse_spark_model_number_position.json").read_text())
+    assert authentic["provenance"] == "LIVE_META_MUSE_SPARK_CROP_POSITION"
+    assert authentic["http_status"] == 200
+    assert authentic["response"]["status"] == "incomplete"
+    assert authentic["response"]["usage"]["total_tokens"] == 1052
+    with pytest.raises(ProviderResponseError, match="not completed"):
+        meta_client.parse_response(authentic["response"], elapsed_ms=0, mode="live")
+
+    _, crop = fixture_crop()
+    mock_fixture = field_localizer.mock_fixture_for(crop)
+    assert mock_fixture is not None
+    assert mock_fixture["provenance"] == "SYNTHETIC_OFFLINE_FIXTURE"
+
+
+def test_live_second_stage_is_one_bounded_low_effort_meta_request(monkeypatch):
+    _, crop = fixture_crop()
+    monkeypatch.setenv("GROUNDLINE_FORCE_MOCK", "0")
+    monkeypatch.setenv("MODEL_API_KEY", "unit-test-sentinel")
+    captured = {}
+
+    def fake_complete(self, **kwargs):
+        captured.update(kwargs)
+        return ModelResult("{}", "muse-spark-1.3", Usage(1, 1, 2, 0), 1, "live", "completed")
+
+    monkeypatch.setattr(meta_client.MetaClient, "complete_live", fake_complete)
+    provider_router.localize_model_number(crop=crop)
+    assert captured["effort"] == "low"
+    assert captured["max_output_tokens"] == 512
+    assert captured["max_attempts"] == 1
+    assert captured["instruction_override"] == field_localizer.FIELD_PROMPT
+    assert captured["image_data_url"].startswith("data:image/png;base64,")
 
 
 def test_explicit_missing_position_returns_no_position_without_geometry():

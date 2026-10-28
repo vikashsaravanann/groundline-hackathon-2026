@@ -128,7 +128,9 @@ def localize_model_number(*, crop: field_localizer.CroppedLabel) -> ModelResult 
         objective="Locate the model-number field inside the supplied product-label crop.",
         image_data_url=field_localizer.crop_data_url(crop),
         effort="low",
-        max_output_tokens=256,
+        # The live crop attempt used all 256 tokens on reasoning and returned
+        # no answer. Keep a bounded cap but leave enough room for its JSON box.
+        max_output_tokens=512,
         max_attempts=1,
         instruction_override=field_localizer.FIELD_PROMPT,
     )

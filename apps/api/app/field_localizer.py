@@ -97,20 +97,35 @@ def crop_data_url(crop: CroppedLabel) -> str:
 
 
 def mock_fixture_for(crop: CroppedLabel) -> dict[str, Any] | None:
-    path = Path(__file__).resolve().parent.parent / "fixtures" / FIXTURE_PATH
-    try:
-        fixture = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    if (
-        fixture.get("provenance") != "SYNTHETIC_OFFLINE_FIXTURE"
-        or fixture.get("crop_sha256") != crop.image.sha256
-        or fixture.get("crop_width") != crop.image.width
-        or fixture.get("crop_height") != crop.image.height
-        or not isinstance(fixture.get("response"), dict)
-    ):
-        return None
-    return fixture
+    fixture_root = Path(__file__).resolve().parent.parent / "fixtures"
+    # Prefer a completed authentic response when one exists. An incomplete
+    # authentic response remains documentary evidence and must not be used as
+    # a successful MOCK result; the clearly named synthetic fixture supports
+    # deterministic offline UI/tests in that case.
+    paths = [
+        fixture_root / FIXTURE_PATH,
+        fixture_root / "muse_spark_model_number_position_synthetic.json",
+    ]
+    for path in paths:
+        try:
+            fixture = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        response = fixture.get("response")
+        if (
+            fixture.get("provenance") not in {
+                "SYNTHETIC_OFFLINE_FIXTURE",
+                "LIVE_META_MUSE_SPARK_CROP_POSITION",
+            }
+            or fixture.get("crop_sha256") != crop.image.sha256
+            or fixture.get("crop_width") != crop.image.width
+            or fixture.get("crop_height") != crop.image.height
+            or not isinstance(response, dict)
+            or response.get("status") != "completed"
+        ):
+            continue
+        return fixture
+    return None
 
 
 def _fraction(value: object, name: str) -> float:

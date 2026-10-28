@@ -60,13 +60,21 @@ source bounds are `x=140..1060`, `y=110..709` in the 1200 × 820 source image.
   response ID, and provider usage metadata. This is authentic SAM evidence.
 - `spark_model_number_crop.png` is the deterministic crop made from that
   returned SAM box.
-- `muse_spark_model_number_position.json` is a **synthetic offline fixture**
-  matching the exact crop hash and dimensions. It exercises Muse Spark response
-  parsing and coordinate mapping, but is not a captured Muse Spark crop call.
-  Its crop-relative box maps to the expected source-image reference
-  `x≈205..552`, `y≈360..400`.
+- `muse_spark_model_number_position.json` is now the authentic live Muse Spark
+  response for that crop. It returned HTTP 200 but ended with
+  `status=incomplete` because the 256-token output cap was consumed almost
+  entirely by reasoning. It returned no output text, field position, or field
+  confidence, so it is evidence of an incomplete response, not successful
+field localization. The future bounded crop request now allows 512 output
+tokens; no follow-up live call was made to verify that larger cap.
+- `muse_spark_model_number_position_synthetic.json` preserves the former
+  **synthetic offline fixture**. It matches the exact crop hash and dimensions
+  and exercises successful response parsing and coordinate mapping; it is not
+  a captured Muse Spark crop call. Its illustrative crop-relative box maps to
+  the expected source-image reference `x≈205..552`, `y≈360..400`.
 
-This fixture chain verifies crop construction, coordinate transformation,
-response normalization, and honest label-only fallback without a new provider
-request. It does not establish live Muse Spark crop localization. The fixture's
-zero usage and zero cost fields describe offline mock data only.
+The two live calls on 28 October verified SAM label localization and reached
+the Spark crop endpoint, but the Spark response was incomplete and supplied no
+field geometry. The UI must therefore show the SAM label region alone for that
+live result. The named synthetic fixture remains available for deterministic
+offline success-path tests, always under an explicit MOCK result mode.

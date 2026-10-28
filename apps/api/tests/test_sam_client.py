@@ -234,6 +234,34 @@ def test_live_adapter_retries_only_one_pre_connection_failure(monkeypatch):
     assert result.objects
 
 
+def test_live_adapter_can_be_configured_for_one_attempt(monkeypatch):
+    image = load_image()
+    attempts = {"count": 0}
+
+    class ConnectFailureClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            attempts["count"] += 1
+            raise sam_client.httpx.ConnectError(
+                "connect failed", request=sam_client.httpx.Request("POST", sam_client.BASE_URL + sam_client.PATH)
+            )
+
+        async def __aexit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(sam_client.httpx, "AsyncClient", ConnectFailureClient)
+    with pytest.raises(sam_client.GroundingTransportError):
+        pytest.importorskip("asyncio").run(
+            sam_client.complete_live(
+                image=image, target_phrase="desk lamp", api_key=SENTINEL,
+                max_attempts=1,
+            )
+        )
+    assert attempts["count"] == 1
+
+
 def test_live_adapter_times_out_without_retrying_uncertain_completion(monkeypatch):
     import asyncio
 
